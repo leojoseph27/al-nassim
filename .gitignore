@@ -73,3 +73,7 @@ rackingpage/
 public/topcar/*-old-backup.*
 public/topcar/homeware-check.png
 public/topcar/grid/*-old-backup.webp
+
+# product-image migration runtime artifacts (local only)
+scripts/product-image-migration-manifest.json
+scripts/product-image-migration.log

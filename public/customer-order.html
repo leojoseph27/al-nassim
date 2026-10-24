@@ -224,8 +224,33 @@
 }
 </style>
 
+<style>
+  /* ==== LOADING GATE (this page only): the WhatsApp order sheet renders
+     synchronously at parse time, but the Material Symbols icon font, the
+     nav engine, and item images are not ready yet — revealing immediately
+     showed raw ligature text and missing icons. The page stays behind an
+     opaque branded screen until the render script + fonts + initial-viewport
+     images are ready (hard watchdog below prevents an infinite gate). ==== */
+  #oat-boot { position: fixed; inset: 0; z-index: 99999; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 22px; background: #ffffff;
+    transition: opacity .25s ease; }
+  html.dark #oat-boot { background: #0a0f14; }
+  #oat-boot.oat-hide { opacity: 0; pointer-events: none; }
+  #oat-boot img { width: 150px; max-width: 50vw; height: auto; }
+  #oat-boot .oat-spin { width: 26px; height: 26px; border-radius: 50%;
+    border: 3px solid #135bec; border-top-color: transparent;
+    animation: oat-spin .8s linear infinite; }
+  @keyframes oat-spin { to { transform: rotate(360deg); } }
+</style>
 </head>
 <body class="bg-surface dark:bg-[#0a0f14] font-body text-on-surface dark:text-white antialiased">
+<!-- LOADING GATE: branded screen shown while the order sheet, icon font and
+     header finish preparing (revealed by the script at the bottom of <body>) -->
+<script>try{if(localStorage.getItem("color-theme")==="dark")document.documentElement.classList.add("dark");}catch(e){}</script>
+<div id="oat-boot" aria-busy="true" aria-label="Loading your order">
+  <img src="/LOGO.png" alt="AL-NASSIM"/>
+  <div class="oat-spin"></div>
+</div>
 <!-- ===== Shared Header (same as all storefront pages) ===== -->
 <nav class="fixed w-full z-50 glass-nav dark:bg-[#0a0f14]/90 shadow-[0_40px_60px_rgba(0,3,8,0.04)] top-0">
 <div class="flex justify-between items-center w-full px-3 sm:px-4 md:px-8 py-2 max-w-screen-2xl mx-auto">
@@ -1890,5 +1915,67 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassim-lang") ==
   }, true);
 })();
 </script>
-</body>
+<script>
+/* ==== LOADING GATE reveal logic (pairs with #oat-boot) ====
+   Reveals the page once ALL of the following are ready:
+     - DOM parsed and every deferred nav script has run (DOMContentLoaded),
+     - the order sheet rendered (os-main) or the error state shown (os-error),
+     - the Material Symbols icon font and headline/body fonts are loaded
+       (icons no longer render as raw ligature text),
+     - the images visible in the initial viewport (item photos + logo) have
+       loaded OR failed (their in-card placeholder is the fallback).
+   A hard watchdog reveals the page after 6.5s no matter what, so a single
+   slow or missing asset can never leave the customer stuck. ==== */
+(function () {
+  "use strict";
+  var revealed = false;
+  function reveal() {
+    if (revealed) return;
+    revealed = true;
+    var el = document.getElementById("oat-boot");
+    if (el) {
+      el.setAttribute("aria-busy", "false");
+      el.classList.add("oat-hide");
+      setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 350);
+    }
+  }
+  function settle(p) { return p && p.then ? p.then(function () {}, function () {}) : Promise.resolve(); }
+  function whenDom() {
+    return new Promise(function (res) {
+      if (document.readyState !== "loading") res();
+      else document.addEventListener("DOMContentLoaded", function () { res(); }, { once: true });
+    });
+  }
+  function whenRendered() {
+    return new Promise(function (res) {
+      var t = setInterval(function () {
+        var main = document.getElementById("os-main");
+        var err = document.getElementById("os-error");
+        if ((main && main.style.display === "block") || (err && err.style.display === "block")) { clearInterval(t); res(); }
+      }, 50);
+      setTimeout(function () { clearInterval(t); res(); }, 3000); /* render is synchronous; belt & braces */
+    });
+  }
+  function whenFonts() {
+    if (!document.fonts || !document.fonts.load) return Promise.resolve();
+    return Promise.all([
+      document.fonts.load('24px "Material Symbols Outlined"'),
+      document.fonts.load('800 36px Manrope'),
+      document.fonts.load('400 14px Inter')
+    ]).catch(function () {});
+  }
+  function whenImages() {
+    var imgs = Array.prototype.slice.call(document.querySelectorAll("#os-items img, nav img"));
+    return Promise.all(imgs.map(function (im) {
+      if (im.complete) return Promise.resolve();
+      return new Promise(function (res) {
+        im.addEventListener("load", function () { res(); }, { once: true });
+        im.addEventListener("error", function () { res(); }, { once: true });
+      });
+    }));
+  }
+  Promise.all([whenDom(), whenRendered(), settle(whenFonts()), settle(whenImages())]).then(function () { setTimeout(reveal, 60); });
+  setTimeout(reveal, 6500); /* watchdog */
+})();
+</script></body>
 </html>

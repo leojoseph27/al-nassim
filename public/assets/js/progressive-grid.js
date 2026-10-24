@@ -42,16 +42,21 @@
     state = null;
   }
 
-  function imgAttrs(eager) {
-    return eager
-      ? '<img decoding="async" fetchpriority="high" '
-      : '<img loading="lazy" decoding="async" ';
+  function imgAttrs(i) {
+    // Priority ladder: ONLY the very first product image is the LCP candidate
+    // and gets fetchpriority=high. The rest of the first batch (initially
+    // visible / near-viewport) load eagerly at default priority — giving
+    // every image high priority would make them all compete with the LCP
+    // image instead of yielding to it. Beyond the first batch: native lazy.
+    if (i === 0) return '<img fetchpriority="high" decoding="async" ';
+    if (i < INITIAL) return '<img decoding="async" ';
+    return '<img loading="lazy" decoding="async" ';
   }
 
-  function buildCard(p, eager) {
+  function buildCard(p, i) {
     // Exactly one <img> per card template: upgrade it with native lazy-loading
     // hints without touching the page's own markup or object-fit behaviour.
-    return state.cardHTML(p).replace("<img ", imgAttrs(eager));
+    return state.cardHTML(p).replace("<img ", imgAttrs(i));
   }
 
   function appendBatch() {
@@ -64,7 +69,7 @@
       return;
     }
     var eager = s.rendered < INITIAL;
-    s.sentinel.insertAdjacentHTML("beforebegin", next.map(function (p) { return buildCard(p, eager); }).join(""));
+    s.sentinel.insertAdjacentHTML("beforebegin", next.map(function (p, k) { return buildCard(p, s.rendered + k); }).join(""));
     s.rendered += next.length;
     if (s.onBatch) s.onBatch();
     if (s.rendered >= s.list.length) {

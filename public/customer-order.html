@@ -1309,7 +1309,7 @@ html.dark #home5-burger-btn { color: #ffffff; }
 <div class="doc-stage">
 <div class="doc-paper receipt-sheet" id="os-wrap">
         <div class="os-container">
-          <div id="os-loading" style="padding:40px 0;text-align:center;color:#64748b;">Loading order…</div>
+          <div id="os-loading" style="display:none;padding:40px 0;text-align:center;color:#64748b;">Loading order…</div>
           <div id="os-error" style="display:none;padding:40px 0;text-align:center;color:#dc2626;font-size:18px;font-weight:600;"></div>
           <div id="os-main" style="display:none;">
             <h1 class="os-title"><span class="os-check"><span class="material-symbols-outlined">check</span></span>YOUR ORDER HAS BEEN RECEIVED.</h1>
@@ -1399,7 +1399,11 @@ html.dark #home5-burger-btn { color: #ffffff; }
 
 <script>/* keep the storefront i18n language in step before the runtime initialises */
 try { localStorage.setItem("nassim-lang", localStorage.getItem("nassim-lang") === "ar" ? "ar" : "en"); } catch (e) {}</script>
-<script src="assets/js/i18n-data.js?v=5" defer></script>
+<!-- i18n-data.js and order-address.js are loaded SYNCHRONOUSLY here (not
+     deferred) so the WhatsApp order sheet can render COMPLETE at parse time
+     — see the render script at the bottom of this page. Deferring them would
+     delay the sheet behind every deferred script (skeleton flash). -->
+<script src="assets/js/i18n-data.js?v=5"></script>
 <script type="module">
   /* Page-local supplement for the Order Sent sheet: wording taken from
      EXISTING approved entries (same as the staff document view). Scoped to
@@ -1409,10 +1413,278 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassim-lang") ==
   window.NASSIM_I18N["order items ("] = window.NASSIM_I18N["order items ("] || "عدد الأصناف (";
 </script>
 <script src="assets/js/i18n.js?v=2" defer></script>
+<script src="assets/js/order-address.js"></script>
 <script src="assets/js/nassim-locations-data.js" defer></script>
-<script src="assets/js/order-address.js" defer></script>
 <script src="assets/js/theme.js" defer></script>
 <script src="assets/js/dark-overrides.js?v=20261013" defer></script>
+
+<style>
+/* ==== MOBILE language selector + header controls: ported verbatim from
+   houseware2.html (style block at its lines 934-952) and from the mobile
+   header-control reveals of assets/css/home5-mobile.css. Shows ONLY the
+   original nav controls on mobile (Search icon / single-label language
+   button / Download / Moon) and hides the injected #nassim-mobile-utils
+   cluster, so the header matches houseware2.html exactly. Desktop is
+   unaffected: every rule here is inside the mobile media query. ==== */
+</style>
+<style>
+    /* MOBILE (<=767px) language selector: show ONLY the current language.
+       The separator and the inactive language span are always hidden; the
+       active span is revealed by the existing NassimLang sync class
+       (nassim-lang-on), so the button reads "ENG" or "عربي" — never both —
+       and there is no flash of the old "EN | عربي" UI before the sync runs.
+       Desktop is unaffected: the whole button is display:none >=768px. */
+    @media (max-width: 767px), (orientation: portrait) {
+      #home5-lang-btn span { display: none !important; }
+      /* DIRECT-SWITCH MOBILE LANGUAGE: show ONLY the OTHER language
+         (the shared sync marks it .nassim-lang-off) — English page shows
+         عربي, Arabic page shows ENG. No caret, no dropdown. */
+      #home5-lang-btn span.nassim-lang-off { display: inline !important; }
+      /* Solid black language text on the white mobile nav: overrides the
+         markup's text-primary / text-primary/50 utilities (rgba(0,3,8) and
+         rgba(0,3,8,0.5)). Light mode only — dark mode keeps its white. */
+      html:not(.dark) #home5-lang-btn span { color: #000000 !important; }
+    }
+</style>
+<style>
+@media (max-width: 767px), (orientation: portrait) {
+  #home5-lang-btn { display: flex !important; }
+  #download-btn-container { display: block !important; }
+  #theme-toggle { display: block !important; }
+  #home5-search-btn { display: flex !important; }
+
+  /* The shared nav scripts inject a duplicate download-button cluster
+     (#nassim-mobile-utils) into the header and also move #theme-toggle
+     into it. Hide only the cluster's duplicate Download button — the moon
+     stays visible (its own control). dark-overrides.css forces the cluster
+     visible with !important, so home1 uses higher-specificity selectors to
+     win without touching the shared file. */
+  nav.glass-nav #nassim-mobile-utils,
+  nav.glass-nav #nassim-mobile-utils .nassim-mu-btn {
+    display: none !important;
+  }
+
+  /* The utility group must stay on the physical right, never reordered. */
+  nav.glass-nav > div > div:last-child {
+    justify-content: flex-end !important;
+    flex-wrap: wrap !important;
+    row-gap: 2px !important;
+  }
+
+  /* Bottom navigation sits directly above the notice strip. */
+}
+</style>
+
+
+<style>
+/* ==== Desktop nav engine tiers from assets/css/home5-mobile.css (lines 101-301).
+   customer-order.html serves the /o/[token] order sheet; its nav must match
+   houseware2.html exactly. Only the desktop-width (>=768px landscape) rules
+   are copied here — the mobile half of home5-mobile.css is intentionally NOT
+   included so the order page's mobile navigation stays untouched. ==== */
+@media (min-width: 768px) and (orientation: landscape) {
+  #home5-min5-notice { display: none !important; }
+}
+
+/* ==== DESKTOP (>767px): home.html-style top nav with icon search and the
+   5 KD pill moved into the top navigation. Loaded only by home5.html. ==== */
+@media (min-width: 768px) and (orientation: landscape) {
+  /* Textbox → icon: hide the desktop search input; the static search icon
+     button in the utility group opens the existing search overlay. */
+  #desktop-inline-search { display: none !important; }
+
+  /* The 5 KD pill lives in the TOP NAV on home5 — remove it from the glass
+     secondary bar (shared script's own pill). */
+  #nassim-secondary-nav .nssn-pill,
+  #nassim-secondary-nav .nassim-pill { display: none !important; }
+
+  /* Top-nav pill: same visual language as the secondary-bar pill had. */
+  #home5-min5-pill {
+    border: 1px solid #c4c6cc;
+    border-radius: 9999px;
+    padding: 8px 14px;
+    background: #ffffff;
+    color: #111d27;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 3, 8, 0.06);
+    pointer-events: none;
+  }
+  html.dark #home5-min5-pill { background: #141a22; border-color: rgba(255,255,255,0.2); color: #ffffff; }
+
+  /* Breathing room between the utility controls (Search / EN | عربي /
+     Download / Moon / Cart / 5 KD pill) — clean and balanced, not congested. */
+  nav.glass-nav > div > div:last-child {
+    gap: 18px !important;
+  }
+  nav.glass-nav #home5-desktop-search-btn .material-symbols-outlined { font-size: 24px; }
+  /* Slightly tighten the department links so the extended utility row fits. */
+  nav.glass-nav div.gap-8 { gap: 22px !important; }
+}
+
+/* ==== DESKTOP COMPRESSION LADDER (768–1240px) =====================
+   Progressive compaction of the desktop header so nothing overlaps or
+   overflows as the viewport narrows. Large desktop (>=1241px) is
+   untouched. Arabic RTL works identically (gaps/fonts are physical). ==== */
+
+/* --- Tier 1 (1024–1240px): medium desktop — single-line department
+   links, tighter gaps, slightly smaller fonts/pill. --- */
+@media (min-width: 1024px) and (orientation: landscape) and (max-width: 1240px) {
+  nav.glass-nav div.gap-8 a span.block { display: none !important; } /* one-line department names */
+  nav.glass-nav div.gap-8 { gap: 16px !important; }
+  nav.glass-nav div.gap-8 a { font-size: 12px !important; }
+  nav.glass-nav > div > div:last-child { gap: 14px !important; }
+  #home5-min5-pill { font-size: 12px !important; padding: 7px 12px !important; }
+}
+
+/* --- Tier 2 (900–1023px): smaller laptop — further compression. --- */
+@media (min-width: 900px) and (max-width: 1023px), (orientation: portrait) {
+  nav.glass-nav div.gap-8 a span.block { display: none !important; }
+  nav.glass-nav div.gap-8 { gap: 10px !important; }
+  nav.glass-nav div.gap-8 a { font-size: 11px !important; }
+  nav.glass-nav > div > div:last-child { gap: 10px !important; }
+  #home5-min5-pill { font-size: 11px !important; padding: 6px 10px !important; }
+  #home5-lang-btn span { font-size: 12px !important; }
+  nav.glass-nav #home5-desktop-search-btn .material-symbols-outlined { font-size: 22px !important; }
+}
+
+/* --- Tier 3 (768–899px): narrowest desktop — maximum compression while
+   remaining a desktop navigation (single-line links, compact pill). --- */
+@media (min-width: 768px) and (orientation: landscape) and (max-width: 899px) {
+  nav.glass-nav div.gap-8 a span.block { display: none !important; }
+  nav.glass-nav div.gap-8 { gap: 6px !important; }
+  nav.glass-nav div.gap-8 a { font-size: 10px !important; }
+  nav.glass-nav > div > div:first-child { gap: 14px !important; }
+  nav.glass-nav > div > div:last-child { gap: 8px !important; }
+  #home5-min5-pill { font-size: 10px !important; padding: 5px 8px !important; }
+  #home5-lang-btn span { font-size: 11px !important; }
+  nav.glass-nav #home5-desktop-search-btn .material-symbols-outlined,
+  nav.glass-nav #download-btn .material-symbols-outlined,
+  nav.glass-nav #theme-toggle .material-symbols-outlined { font-size: 20px !important; }
+  #home5-desktop-search-btn .material-symbols-outlined { font-size: 20px !important; }
+}
+
+/* Safety: the header row never wraps horizontally. NOTE: no overflow:hidden
+   here — it would clip the department dropdowns, which must extend below
+   the header and stack ABOVE the secondary FREE DELIVERY bar. */
+@media (min-width: 768px) and (orientation: landscape) {
+  nav.glass-nav > div { flex-wrap: nowrap !important; }
+  nav.glass-nav div.gap-8 a { white-space: nowrap !important; }
+}
+
+/* ==== DESKTOP (>767px): floating GLASS search popup for the header search
+   icon — presentation only; the legacy overlay/search behavior from search.js
+   is untouched. Glass treatment matches the existing desktop navigation
+   (translucent surface + 20px backdrop blur), compact panel, pill input with
+   a left search glyph and a minimal round close button, and a gentle
+   180ms drop-in animation. ==== */
+@media (min-width: 768px) and (orientation: landscape) {
+  /* Subtle translucent page tint only — hero stays clearly visible. */
+  #nassim-search-overlay {
+    background: rgba(247, 249, 255, 0.15) !important;
+    padding-top: 92px !important;
+    animation: h5searchFade 180ms ease !important;
+  }
+  @keyframes h5searchFade { from { opacity: 0; } to { opacity: 1; } }
+
+  /* Compact floating glass panel (collapses to ~68px tall when empty). */
+  #nassim-search-overlay > div {
+    background: rgba(248, 245, 240, 0.62) !important;
+    backdrop-filter: blur(22px) saturate(1.4) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(1.4) !important;
+    border: 1px solid rgba(255, 255, 255, 0.55) !important;
+    outline: 1px solid rgba(0, 3, 8, 0.05) !important;
+    border-radius: 22px !important;
+    box-shadow: 0 12px 36px rgba(0, 3, 8, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.45) !important;
+    max-width: 600px !important;
+    animation: h5searchDrop 180ms ease !important;
+  }
+  @keyframes h5searchDrop { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Input row: search glyph on the left, pill input, round close on the right. */
+  #nassim-search-overlay > div > div:first-child {
+    position: relative !important;
+    border-bottom: none !important;
+    padding: 12px 14px !important;
+    gap: 10px !important;
+  }
+  #nassim-search-overlay > div > div:first-child::before {
+    content: 'search';
+    font-family: 'Material Symbols Outlined';
+    font-size: 20px;
+    line-height: 1;
+    color: #44474b;
+    position: absolute;
+    left: 28px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+  #nassim-search-overlay input {
+    border: 1px solid rgba(0, 3, 8, 0.08) !important;
+    outline: none !important;
+    border-radius: 9999px !important;
+    background: rgba(255, 255, 255, 0.65) !important;
+    height: 40px !important;
+    padding-left: 42px !important;
+    padding-right: 16px !important;
+    font-size: 14px !important;
+    color: #111d27 !important;
+    box-shadow: inset 0 1px 2px rgba(0, 3, 8, 0.03) !important;
+  }
+  #nassim-search-overlay input::placeholder { color: rgba(17, 29, 39, 0.45) !important; }
+  #nassim-search-overlay input:focus {
+    outline: none !important;
+    border-color: rgba(130, 83, 53, 0.35) !important;
+    box-shadow: 0 0 0 3px rgba(130, 83, 53, 0.12) !important;
+  }
+  /* Round minimal close button. */
+  #nassim-search-overlay > div > div:first-child > button {
+    border-radius: 9999px !important;
+    width: 30px !important;
+    height: 30px !important;
+    flex: 0 0 auto !important;
+    background: rgba(255, 255, 255, 0.65) !important;
+    color: #44474b !important;
+    font-size: 13px !important;
+    border: 1px solid rgba(0, 3, 8, 0.06) !important;
+  }
+  #nassim-search-overlay > div > div:first-child > button:hover {
+    background: #e4efff !important;
+    color: #111d27 !important;
+  }
+
+  /* ARABIC (html.lang-ar): mirror the popup row — search glyph on the
+     RIGHT, close button on the LEFT, input text space on the right.
+     Matches the row dir=rtl set by search.js for Arabic. */
+  html.lang-ar #nassim-search-overlay > div > div:first-child::before {
+    left: auto !important;
+    right: 28px;
+  }
+  html.lang-ar #nassim-search-overlay input {
+    padding-left: 16px !important;
+    padding-right: 42px !important;
+  }
+
+  /* Results list: transparent panel continues; items keep their separators. */
+  #nassim-search-overlay > div > div:last-child { border-top: none !important; }
+}
+
+/* ==== ARABIC desktop (768–1240px): Arabic department names are wider than
+   the English ones — compress them further so they never reach the utility
+   group. Physical layout stays RTL; only sizes/gaps shrink. ==== */
+@media (min-width: 768px) and (orientation: landscape) and (max-width: 1240px) {
+  html.lang-ar nav.glass-nav img[alt="AL-Nassim Logo"] { height: 34px !important; }
+  html.lang-ar nav.glass-nav div.gap-8 { gap: 10px !important; }
+  html.lang-ar nav.glass-nav div.gap-8 a,
+  html.lang-ar nav.glass-nav div.gap-8 a span { font-size: 11px !important; }
+  html.lang-ar nav.glass-nav > div > div:last-child { gap: 12px !important; }
+  html.lang-ar #home5-min5-pill { font-size: 11px !important; padding: 6px 10px !important; }
+  html.lang-ar #home5-lang-btn span { font-size: 11px !important; }
+}
+</style>
+
 <script src="assets/js/cart-nav.js" defer></script>
 <script src="assets/js/search.js" defer></script>
 <script src="assets/js/account.js" defer></script>
@@ -1483,7 +1755,12 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassim-lang") ==
     document.getElementById("os-error").style.display = "none";
     document.getElementById("os-main").style.display = "block";
   }
-  document.addEventListener("DOMContentLoaded", function () {
+  /* Render IMMEDIATELY at parse time instead of on DOMContentLoaded: the
+     order data is injected inline by /o/{id}-{signature} before any script
+     runs, and every DOM element this touches exists above this script.
+     Waiting for DOMContentLoaded kept the sheet hidden behind all deferred
+     scripts, so customers saw the loading skeleton flash first. */
+  (function () {
     var payload = window.__NASSIM_ORDER__;
     var o = payload && payload.success && payload.data && payload.data.order;
     if (!o) {
@@ -1503,10 +1780,115 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassim-lang") ==
         if (window.__lastOrderDoc) renderDocument(window.__lastOrderDoc);
       }, 150);
     });
-  });
+  })();
 })();
 </script>
 <script>(function(){var timer=null,active=null,inside=false;function show(m){m.style.opacity="1";m.style.visibility="visible";m.style.transform="translateY(0)"}function hide(m){m.style.opacity="0";m.style.visibility="hidden";m.style.transform="translateY(10px)";if(active===m)active=null}function scheduleClose(){inside=false;timer=setTimeout(function(){if(!inside&&active)hide(active)},250)}document.querySelectorAll(".dropdown-trigger").forEach(function(tr){var menu=tr.querySelector(".dropdown-menu");if(!menu)return;tr.addEventListener("mouseenter",function(){if(active&&active!==menu)hide(active);clearTimeout(timer);inside=true;show(menu);active=menu});menu.addEventListener("mouseenter",function(){clearTimeout(timer);inside=true});tr.addEventListener("mouseleave",scheduleClose);menu.addEventListener("mouseleave",scheduleClose)})})();</script>
 <script src="assets/js/mbnav-categories.js?v=2"></script>
+<script>
+    /* Bottom-nav "Categories" label: page-local AR swap (2026-10-13).
+       Scoped to this one span on home5.html ONLY — the shared i18n system
+       and every other page/button keep their existing wording. */
+    (function () {
+        var el = document.getElementById('mbnav-categories-label');
+        if (!el) return;
+        function storedLang() { try { return localStorage.getItem('nassim-lang') === 'ar' ? 'ar' : 'en'; } catch (e) { return 'en'; } }
+        function apply(lang) {
+            var t;
+            if (lang === 'ar') {
+                t = (window.NASSIM_I18N && window.NASSIM_I18N['categories']) || el.getAttribute('data-ar');
+            } else {
+                t = el.getAttribute('data-en') || 'Categories';
+            }
+            if (t && el.textContent !== t) el.textContent = t;
+        }
+        apply(storedLang());
+        window.addEventListener('nassim-langchange', function (e) {
+            apply(e && e.detail && e.detail.lang ? e.detail.lang : storedLang());
+        });
+        document.addEventListener('nassim-langchange', function (e) {
+            apply(e && e.detail && e.detail.lang ? e.detail.lang : storedLang());
+        });
+    })();
+    (function () {
+        function ready(fn) {
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+            else fn();
+        }
+        ready(function () {
+            var nav = document.getElementById('mobile-bottom-nav');
+            if (!nav || nav.dataset.bound) return;
+            nav.dataset.bound = '1';
+
+            // Active state — Home is active on the homepage.
+            var path = (location.pathname.split('/').pop() || location.pathname || '').toLowerCase();
+            var onHome = (path === '' || path === 'home5.html' || path === 'home5.html' || path === 'index.html');
+            var homeBtn = nav.querySelector('[data-mbnav="home"]');
+            if (homeBtn && onHome) homeBtn.classList.add('mbnav-active');
+
+            // Home -> home5.html (no-op if already here)
+            if (homeBtn) homeBtn.addEventListener('click', function () {
+                if (onHome) return;
+                window.location.href = 'home5.html';
+            });
+
+            // Categories -> reuse the existing hamburger drawer toggle
+            var catBtn = nav.querySelector('[data-mbnav="categories"]');
+            if (catBtn) catBtn.addEventListener('click', function () {
+                var slot = document.getElementById('hamburger-slot');
+                if (slot) slot.click(); // exactly as if the hamburger was pressed
+            });
+
+            // Account -> reuse existing account panel (Login if guest, Profile if logged in)
+            var accBtn = nav.querySelector('[data-mbnav="account"]');
+            if (accBtn) accBtn.addEventListener('click', function () {
+                if (window.NassimAccount && window.NassimAccount.openPanel) window.NassimAccount.openPanel();
+            });
+
+            // Cart -> reuse existing Cart page
+            var cartBtn = nav.querySelector('[data-mbnav="cart"]');
+            if (cartBtn) cartBtn.addEventListener('click', function () {
+                window.location.href = 'cart.html';
+            });
+
+            // Cart badge: #header-cart-count is synced by cart-nav.js. We only
+            // toggle its visibility based on the synced value (presentation only).
+            var badge = document.getElementById('header-cart-count');
+            function syncBadge() {
+                if (!badge) return;
+                var n = parseInt((badge.textContent || '').trim(), 10);
+                badge.style.display = (isNaN(n) || n <= 0) ? 'none' : 'flex';
+            }
+            syncBadge();
+            if (badge && window.MutationObserver) {
+                new MutationObserver(syncBadge).observe(badge, { childList: true, characterData: true, subtree: true });
+            }
+            window.addEventListener('pageshow', syncBadge);
+            window.addEventListener('storage', syncBadge);
+        });
+    })();
+</script>
+<script>
+/* DIRECT-SWITCH MOBILE LANGUAGE — page-local, mobile only (<=767px).
+   The shared dark-overrides.js opens a language dropdown on tap; this
+   window-capture listener runs BEFORE that document-level handler, stops
+   it, and switches the language DIRECTLY via the existing
+   window.NassimLang.toggle() (localStorage 'nassim-lang' + reload).
+   The button label shows the OTHER language (shared sync marks it
+   .nassim-lang-off; CSS above displays only that span). Desktop is
+   untouched (the listener no-ops >=768px). */
+(function () {
+  "use strict";
+  window.addEventListener("click", function (e) {
+    if (!e.target || !e.target.closest) return;
+    var btn = e.target.closest("#home5-lang-btn");
+    if (!btn) return;
+    if (!window.matchMedia("(max-width: 767px), (orientation: portrait)").matches) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (window.NassimLang && window.NassimLang.toggle) window.NassimLang.toggle();
+  }, true);
+})();
+</script>
 </body>
 </html>

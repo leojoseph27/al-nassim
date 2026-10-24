@@ -1701,12 +1701,16 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassimStaffLang"
       btn.hidden = false;
       btn.textContent = tt("🔕 Push Notifications — OFF", "pushToggleOff");
     } else if (s === "denied") {
-      // Browsers never re-prompt after a deny — explain on the button and
-      // disable it until staff allow notifications in browser settings
-      // (re-checked whenever the tab becomes visible again).
-      btn.hidden = false;
-      btn.disabled = true;
-      btn.textContent = tt("🔕 Push blocked — allow notifications in browser settings", "pushBlocked");
+      // TEMPORARILY HIDDEN (was: disabled explanation button "🔕 Push blocked
+      // — allow notifications in browser settings"). Browsers never re-prompt
+      // after a deny, so staff would see this permanently with no action
+      // possible in-page; the staff asked to remove it — restore this branch
+      // to `btn.hidden = false; btn.disabled = true;` plus the textContent
+      // assignment below to bring the explanation back.
+      // btn.hidden = false;
+      // btn.disabled = true;
+      // btn.textContent = tt("🔕 Push blocked — allow notifications in browser settings", "pushBlocked");
+      btn.hidden = true;
     } else if (s === "insecure") {
       // TEMPORARILY HIDDEN (was: tappable explanation button). The staff
       // asked to remove the "🔕 push notifications: unavailable" button for

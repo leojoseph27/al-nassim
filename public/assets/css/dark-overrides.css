@@ -900,3 +900,10 @@ html.lang-ar #h5-b-langval { font-size: 13px !important; line-height: 19.5px !im
 /* 2026-10-25: mobile bottom-nav icons/labels — solid white in dark mode
    (was rgba(255,255,255,0.6), which read as grey). Light mode unchanged. */
 .dark .mbnav-item { color: #ffffff !important; }
+
+/* 2026-10-25: "Added to cart" popups — white button with black text in dark
+   mode (desktop + mobile). Overrides the inline dark backgrounds. */
+html.dark #sc-toast { background: #ffffff !important; color: #000308 !important; }
+html.dark #sc-toast .material-symbols-outlined { color: #000308 !important; }
+html.dark #toast-container .toast-animate { background: #ffffff !important; color: #000308 !important; }
+html.dark #toast-container .toast-animate .material-symbols-outlined { color: #000308 !important; }

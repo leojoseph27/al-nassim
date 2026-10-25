@@ -1076,7 +1076,7 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassimStaffLang"
   document.getElementById("signout-btn").addEventListener("click", function () {
     fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" })
       .catch(function () {})
-      .finally(function () { window.location.href = "/home5.html"; });
+      .finally(function () { window.location.href = "/admin/login?redirect=%2Fadmin.html"; });
   });
   document.getElementById("prev-btn").addEventListener("click", function () { if (state.page > 1) { state.page--; loadOrders(); } });
   document.getElementById("next-btn").addEventListener("click", function () { if (state.page < state.totalPages) { state.page++; loadOrders(); } });

@@ -15,6 +15,13 @@
   * { box-sizing: border-box; }
   body { margin:0; font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif; background:var(--bg); color:var(--ink); }
   .topbar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:#0f172a; color:#fff; padding:12px 24px; }
+  /* Desktop only (≥768px landscape): match the storefront pages' top-nav
+     spacing (houseware2.html & co. use a 90%-width centered container) —
+     the dark bar stays full-width, its content insets 5% from each viewport
+     edge instead of the fixed 24px. Mobile/tablet keep 24px. */
+  @media (min-width: 768px) and (orientation: landscape) {
+    .topbar { padding-left: 5vw; padding-right: 5vw; }
+  }
   .topbar .brand { font-weight:800; letter-spacing:.08em; }
   .topbar .sub { color:#94a3b8; font-size:13px; }
   .topbar .spacer { flex:1; }
@@ -173,7 +180,7 @@
   .hb-btn { display:none; }
   #mobile-menu { display:none; }
   @media (max-width: 767px), (orientation: portrait) {
-    #refresh-btn, #signout-btn, #push-enable-btn { display:none !important; }
+    #refresh-btn, #signout-btn { display:none !important; }
     .hb-btn { display:inline-block; }
     #mobile-menu { display:block; background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-top:8px; }
     #mobile-menu[hidden] { display:none; }
@@ -461,10 +468,11 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassimStaffLang"
   <span class="spacer"></span>
   <button class="btn" id="refresh-btn" type="button" data-i18n="refresh">Refresh</button>
   <button class="btn" id="signout-btn" type="button" data-i18n="signout">Sign Out</button>
-  <!-- Web Push toggle: "Enable Push Notifications" before setup, then an
-       ON/OFF toggle for this device's system notifications (see
-       updatePushStatus / the click handler in the page script). -->
-  <button class="btn" id="push-enable-btn" type="button" hidden>Enable Push Notifications</button>
+  <!-- Web Push toggle button REMOVED (staff request): the "Enable Push
+       Notifications" button / 🔔 ON-OFF toggle is gone from the header. The
+       push pipeline (service worker, subscription healing, syncPushPaused)
+       stays in the page script but is now inert — all of its UI entry points
+       are gone and updatePushStatus() exits early with no button. -->
   <div class="toolbar-row">
     <button class="btn lang-btn" id="lang-btn" type="button" title="Switch language"><span class="lang-en on">EN</span><span class="lang-sep">|</span><span class="lang-ar">العربية</span></button>
     <button class="btn" id="notify-enable-btn" type="button">Enable Notifications &amp; Sound</button>
@@ -1320,7 +1328,7 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassimStaffLang"
   document.getElementById("signout-btn").addEventListener("click", function () {
     fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" })
       .catch(function () {})
-      .finally(function () { window.location.href = "/home5.html"; });
+      .finally(function () { window.location.href = "/admin/login?redirect=%2Fadmin.html"; });
   });
   document.getElementById("prev-btn").addEventListener("click", function () { if (state.page > 1) { state.page--; loadOrders(); } });
   document.getElementById("next-btn").addEventListener("click", function () { if (state.page < state.totalPages) { state.page++; loadOrders(); } });
@@ -1827,7 +1835,10 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassimStaffLang"
   // reads 🔔 ON / 🔕 OFF and toggles THIS DEVICE's subscription — completely
   // independent of the Notifications & Sound toggle.
   var pushToggleBusy = false;
-  document.getElementById("push-enable-btn").addEventListener("click", function () {
+  // Button removed from the header (staff request) — guard the binding so
+  // the rest of the push pipeline keeps loading without it.
+  var pushEnableBtn = document.getElementById("push-enable-btn");
+  if (pushEnableBtn) pushEnableBtn.addEventListener("click", function () {
     // This click is a user gesture, so it also unlocks the chime (same as
     // the Notifications & Sound button).
     ensureAudio();

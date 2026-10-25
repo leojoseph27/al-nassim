@@ -55,6 +55,24 @@
    Arabic item fits inside without overflow (same fix as supermarket.html). */
 @media (min-width: 768px) and (orientation: landscape) { html.lang-ar .dd-warehouse-wide { width: 19rem; } }</style>
 
+<style>
+    /* Desktop-only top-nav container (matches houseware2.html): the header
+       row uses 90% of the viewport plus the nav engine's 8px-per-side padding
+       floor, centered, so the logo and the utility row sit exactly on the 5%
+       viewport lines at any desktop width (~95px at 1920px, margins always
+       equal). Removes the max-w-screen-2xl cap that left dead space at 1920px
+       and neutralises the Tailwind px-8 padding. The row keeps justify-between
+       (departments left, utilities right) with a flexible middle gap.
+       Mobile/tablet (<768px) and portrait keep the original layout. */
+    @media (min-width: 768px) and (orientation: landscape) {
+        nav.glass-nav > div {
+            max-width: none;
+            width: calc(90% + 16px);
+            margin-inline: auto;
+            padding-inline: 8px;
+        }
+    }
+</style>
 </head><body class="bg-surface dark:bg-[#0a0f14] font-body text-on-surface dark:text-white antialiased">
 
     <!-- Theme must be resolved BEFORE the splash first paints so its solid
@@ -1454,9 +1472,9 @@ html.lang-ar #featured-carousel .carousel-edge .material-symbols-outlined { tran
 <div>
 <h4 class="text-sm font-bold text-white uppercase tracking-widest mb-6">General Information</h4>
 <ul class="space-y-4 text-sm font-medium">
-<li><a class="text-slate-400 hover:text-primary transition-colors" href="contact.html">Contact Us</a></li>
-<li><a class="text-slate-400 hover:text-primary transition-colors" href="#">About</a></li>
-<li><a class="text-slate-400 hover:text-primary transition-colors" href="#">Frequently Asked Questions</a></li>
+<li><a class="text-slate-400 hover:text-primary transition-colors" href="home5.html">Contact Us</a></li>
+<li><a class="text-slate-400 hover:text-primary transition-colors" href="home5.html">About</a></li>
+<li><a class="text-slate-400 hover:text-primary transition-colors" href="home5.html">Frequently Asked Questions</a></li>
 <li><a class="text-slate-400 hover:text-primary transition-colors" href="home5.html">Terms & Conditions</a></li>
 </ul>
 </div>
@@ -1464,9 +1482,9 @@ html.lang-ar #featured-carousel .carousel-edge .material-symbols-outlined { tran
 <div>
 <h4 class="text-sm font-bold text-white uppercase tracking-widest mb-6">Customer Service</h4>
 <ul class="space-y-4 text-sm font-medium">
-<li><a class="text-slate-400 hover:text-primary transition-colors" href="returns-policy.html">Return and refund policy</a></li>
-<li><a class="text-slate-400 hover:text-primary transition-colors" href="#">Shipping & delivery</a></li>
-<li><a class="text-slate-400 hover:text-primary transition-colors" href="#">Privacy and security</a></li>
+<li><a class="text-slate-400 hover:text-primary transition-colors" href="home5.html">Return and refund policy</a></li>
+<li><a class="text-slate-400 hover:text-primary transition-colors" href="home5.html">Shipping & delivery</a></li>
+<li><a class="text-slate-400 hover:text-primary transition-colors" href="home5.html">Privacy and security</a></li>
 </ul>
 </div>
 <!-- Column 5 -->

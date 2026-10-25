@@ -1090,6 +1090,27 @@
     @media (min-width: 768px) and (orientation: landscape) {
         #nassim-secondary-nav { height: 63px !important; }
     }
+    /* Desktop only (≥768px landscape): the top navigation uses 90% of the
+       viewport plus the 8px-per-side padding floor the h5 engine applies
+       (FLOOR.pad), so the logo starts exactly at the 5% viewport line and
+       the utility row ends exactly 5% from the right edge at any desktop
+       width (~95px at 1920px, margins always equal). The header row's
+       Tailwind classes cap it at max-w-screen-2xl, which leaves dead space
+       at 1920px; this override removes the cap. The row keeps its
+       justify-between, so Part A (logo + departments) stays anchored to the
+       left edge and Part B (utilities + pill) to the right edge, with the
+       gap between the groups flexing with the viewport. Internal spacing,
+       fonts, logo size, header height and vertical alignment are untouched;
+       mobile/tablet keep the original Tailwind layout. The side padding
+       itself is zeroed in the 2026-10-24 tune rule further below, which
+       previously supplied the desktop inset this container now replaces. */
+    @media (min-width: 768px) and (orientation: landscape) {
+        nav.glass-nav > div {
+            max-width: none;
+            width: calc(90% + 16px);
+            margin-inline: auto;
+        }
+    }
     /* Mobile-only: force vertical centering of all header row children.
        Browsers may apply default margins/padding to <form> and <button>
        elements that shift the search bar off-centre. */
@@ -1409,46 +1430,68 @@
 <!-- Top Notification Bar -->
 <!-- TopNavBar -->
 <nav class="fixed w-full z-50 glass-nav dark:bg-[#0a0f14]/90 shadow-[0_40px_60px_rgba(0,3,8,0.04)] top-0">
+<style>
+  /* Soft under-shadow beneath the top-nav logo (restored, then +10%). */
+  #nav-logo { filter: drop-shadow(0 6.6px 13.2px rgba(0, 3, 8, 0.198)); }
+
+  /* --- 2026-10-25: top-nav utility icons +10% (desktop only) ------------
+     Search 26px -> 28.6px, Download/Cart 30px -> 33px (inline styles beaten
+     by !important), Dark-mode glyph 24px -> 26.4px and box 26px -> 28.6px.
+     Language label: dark-overrides.css pins #home5-lang-cur to 18.2px (EN)
+     / 13px (AR) with !important; these higher-specificity rules load after
+     it, so 18.2px -> 20.02px and 13px -> 14.3px. Same desktop breakpoint as
+     the measuring engine; mobile and tablet untouched. No layout, spacing,
+     colour or behaviour changes. --- */
+  @media (min-width: 768px) and (orientation: landscape) {
+    #home5-desktop-search-btn .material-symbols-outlined { font-size: 28.6px !important; }
+    #download-btn .material-symbols-outlined { font-size: 33px !important; }
+    #home5-cart-btn .material-symbols-outlined { font-size: 33px !important; }
+    #theme-toggle .material-symbols-outlined { width: 28.6px !important; height: 28.6px !important; font-size: 26.4px !important; }
+    html:not(.lang-ar) #home5-lang-dd #home5-lang-cur { font-size: 20.02px !important; line-height: 21.45px !important; }
+    html.lang-ar #home5-lang-dd #home5-lang-cur { font-size: 14.3px !important; line-height: 21.45px !important; }
+    #home5-lang-btn span { font-size: 13.59px !important; } /* legacy EN|عربي, hidden on desktop */
+  }
+</style>
 <div class="flex justify-between items-center w-full px-3 sm:px-4 md:px-8 py-2 max-w-screen-2xl mx-auto">
 <div class="flex items-center gap-12">
 <a href="home5.html" class="flex items-center gap-2 group cursor-pointer shrink-0">
-<img src="LOGO.webp" alt="AL-Nassim Logo" class="h-9 w-auto md:h-[4.3rem]" fetchpriority="high"/>
+<img src="LOGO.webp" alt="AL-Nassim Logo" id="nav-logo" class="h-9 w-auto md:h-[4.3rem]" fetchpriority="high"/>
 </a>
 <div class="hidden md:flex gap-8">
 <div class="dropdown-trigger relative py-1">
-<a class="font-headline tracking-tight font-bold uppercase text-[14px] text-on-background dark:text-white hover:text-secondary transition-colors duration-300 inline-block" href="houseware2.html">Houseware<br/><span class="block text-[11px]">Equipment</span></a>
+<a class="font-headline tracking-tight font-bold uppercase text-[15.29px] text-on-background dark:text-white hover:text-secondary transition-colors duration-300 inline-block" href="houseware2.html">Houseware<br/><span class="block text-[12.64px]">Equipment</span></a>
 <div class="dropdown-menu absolute top-full -left-24 mt-1 w-64 dark-glass-dropdown p-6 z-[60]">
 <ul class="space-y-4">
-<li><a class="text-[13px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="houseware-cleaning-tools.html">Cleaning Tools</a></li>
-<li><a class="text-[13px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="houseware-home-outdoor.html">Home & Outdoor</a></li>
-<li><a class="text-[13px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="houseware-kitchenware.html">Kitchenware</a></li>
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="houseware-cleaning-tools.html">Cleaning Tools</a></li>
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="houseware-home-outdoor.html">Home & Outdoor</a></li>
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="houseware-kitchenware.html">Kitchenware</a></li>
 </ul>
 </div>
 </div>
 <div class="dropdown-trigger relative py-1">
-<a class="font-headline tracking-tight font-bold uppercase text-[14px] text-on-background dark:text-white hover:text-secondary transition-colors duration-300 inline-block" href="supermarket.html">Supermarket<br/><span class="block text-[11px]">Equipment</span></a>
+<a class="font-headline tracking-tight font-bold uppercase text-[15.29px] text-on-background dark:text-white hover:text-secondary transition-colors duration-300 inline-block" href="supermarket.html">Supermarket<br/><span class="block text-[12.64px]">Equipment</span></a>
 <div class="dropdown-menu absolute top-full -left-24 mt-1 w-64 dark-glass-dropdown p-6 z-[60]">
 <ul class="space-y-4">
-<li><a class="text-[13px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="supermarket-cooling-appliances.html">Cooling Appliances</a></li>
-<li><a class="text-[13px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="supermarket-trolleys-baskets.html">Trolleys & Baskets</a></li>
-<li><a class="text-[13px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="supermarket-shelves-stands.html">Shelves & Stands</a></li>
-<li><a class="text-[13px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="supermarket-checkout-solutions.html">Counters and Scales</a></li>
-<li><a class="text-[13px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="supermarket-accessories.html">Accessories</a></li>
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="supermarket-cooling-appliances.html">Cooling Appliances</a></li>
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="supermarket-trolleys-baskets.html">Trolleys & Baskets</a></li>
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="supermarket-shelves-stands.html">Shelves & Stands</a></li>
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="supermarket-checkout-solutions.html">Counters and Scales</a></li>
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="supermarket-accessories.html">Accessories</a></li>
 </ul>
 </div>
 </div>
 <div class="dropdown-trigger relative py-1">
-<a class="font-headline tracking-tight font-bold uppercase text-[14px] text-on-background dark:text-white hover:text-secondary transition-colors duration-300 inline-block" href="warehouse.html">Warehouse<br/><span class="block text-[11px]">Equipment</span></a>
+<a class="font-headline tracking-tight font-bold uppercase text-[15.29px] text-on-background dark:text-white hover:text-secondary transition-colors duration-300 inline-block" href="warehouse.html">Warehouse<br/><span class="block text-[12.64px]">Equipment</span></a>
 <div class="dropdown-menu absolute top-full -left-24 mt-1 w-64 dark-glass-dropdown p-6 dd-warehouse-wide z-[60]">
 <ul class="space-y-4">
-<li><a class="text-[13px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="warehouse-trolleys-baskets.html">Trolleys & Baskets</a></li>
-<li><a class="text-[13px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="warehouse-forklifts-pallets.html">Forklifts & Pallets</a></li>
-<li><a class="text-[13px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="warehouse-heavy-duty-racking.html">Heavy Duty Racks</a></li>
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="warehouse-trolleys-baskets.html">Trolleys & Baskets</a></li>
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="warehouse-forklifts-pallets.html">Forklifts & Pallets</a></li>
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="warehouse-heavy-duty-racking.html">Heavy Duty Racks</a></li>
 </ul>
 </div>
 </div>
-<div class="dropdown-trigger relative py-1"><a class="font-headline tracking-tight font-bold uppercase text-[14px] text-on-background dark:text-white hover:text-secondary transition-colors duration-300 inline-block" href="customized-packaging.html">Packaging<br/><span class="block text-[11px]">Manufacturer</span></a></div>
-<div class="dropdown-trigger relative py-1"><a class="font-headline tracking-tight font-bold uppercase text-[14px] text-on-background dark:text-white hover:text-secondary transition-colors duration-300 inline-block" href="cold-room.html">Cold<br/><span class="block text-[11px]">Rooms</span></a></div>
+<div class="dropdown-trigger relative py-1"><a class="font-headline tracking-tight font-bold uppercase text-[15.29px] text-on-background dark:text-white hover:text-secondary transition-colors duration-300 inline-block" href="customized-packaging.html">Packaging<br/><span class="block text-[12.64px]">Manufacturer</span></a></div>
+<div class="dropdown-trigger relative py-1"><a class="font-headline tracking-tight font-bold uppercase text-[15.29px] text-on-background dark:text-white hover:text-secondary transition-colors duration-300 inline-block" href="cold-room.html">Cold<br/><span class="block text-[12.64px]">Rooms</span></a></div>
 </div>
 </div>
 <!-- Mobile inline search bar (md:hidden). Sits between logo and hamburger as a
@@ -1463,9 +1506,9 @@
 </form>
 <button id="home5-desktop-search-btn" type="button" aria-label="Search products" class="hidden md:flex hover:opacity-80 transition-all duration-300 active:scale-95 items-center"><span class="material-symbols-outlined text-primary dark:text-white" style="font-size:26px;">search</span></button>
 <button id="home5-lang-btn" class="hidden md:flex hover:opacity-80 transition-all duration-300 active:scale-95 items-center">
-<span class="text-[13px] font-label font-bold tracking-widest text-primary dark:text-white">EN</span>
-<span class="mx-1 text-primary/30 dark:text-white/30 font-light text-[13px]">|</span>
-<span class="text-[13px] font-label font-bold tracking-widest text-primary/50 dark:text-white/50 hover:text-primary dark:hover:text-white transition-colors">عربي</span>
+<span class="text-[12.35px] font-label font-bold tracking-widest text-primary dark:text-white">EN</span>
+<span class="mx-1 text-primary/30 dark:text-white/30 font-light text-[12.35px]">|</span>
+<span class="text-[12.35px] font-label font-bold tracking-widest text-primary/50 dark:text-white/50 hover:text-primary dark:hover:text-white transition-colors">عربي</span>
 </button>
 <!-- DESKTOP-ONLY (>=768px) language selector. Shows ONLY the current language
      ("ENG" / "عربي"); hover or click reveals a compact dropdown offering the
@@ -1477,7 +1520,7 @@
      ALL widths here; the >=768px media query below reveals it. -->
 <div id="home5-lang-dd" class="h5-lang-dd">
 <button id="home5-lang-trigger" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Language">
-<span id="home5-lang-cur" class="text-[13px] font-label font-bold tracking-widest text-primary dark:text-white">ENG</span>
+<span id="home5-lang-cur" class="text-[12.35px] font-label font-bold tracking-widest text-primary dark:text-white">ENG</span>
 </button>
 </div>
 <div class="relative group hidden md:block" id="download-btn-container">
@@ -1507,7 +1550,7 @@
 <button class="hidden md:block hover:opacity-80 transition-all duration-300 active:scale-95" id="theme-toggle">
 <span class="material-symbols-outlined text-primary dark:text-white w-[26px] h-[26px]">dark_mode</span>
 </button>
-<button class="hidden md:block relative hover:opacity-80 transition-all duration-300 active:scale-95" aria-label="Cart">
+<button id="home5-cart-btn" class="hidden md:block relative hover:opacity-80 transition-all duration-300 active:scale-95" aria-label="Cart">
 <span class="material-symbols-outlined dark:text-slate-300" style="font-size: 30px;">shopping_cart</span><span class="nassim-cart-badge absolute -top-1.5 -right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-secondary text-white text-[9px] font-bold items-center justify-center leading-none" style="display:none;">00</span>
 </button>
 <div id="home5-min5-pill" role="note" class="hidden md:flex items-center" style="border:1px solid #c4c6cc;border-radius:9999px;padding:9px 16px;background:#ffffff;color:#111d27;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 2px 8px rgba(0,3,8,0.06);pointer-events:none;">We only accept orders above 5 KD.</div>
@@ -1574,6 +1617,9 @@
   .hw2-the { display: block; font-family: Manrope, "Signika", sans-serif; font-size: 34px; font-weight: 500; line-height: 1.15; color: #111214; margin: 0 0 2px; }
   .hw2-title { font-family: Manrope, "Signika", sans-serif; font-size: 62px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; color: #111214; margin: 0 0 8px; }
   .hw2-tagline { font-family: Manrope, sans-serif; font-size: 24px; font-weight: 400; color: #52708c; margin: 0 0 20px; }
+  html.dark .hw2-the,
+  html.dark .hw2-title,
+  html.dark .hw2-tagline { color: #ffffff; }
   .hw2-wrap > header { text-align: center; }
   .hw2-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 19px; }
   /* translateZ(0) promotes each card to its own compositor layer: without it
@@ -1790,9 +1836,9 @@
 <div>
 <h4 class="text-sm font-bold text-white uppercase tracking-widest mb-6">General Information</h4>
 <ul class="space-y-4 text-sm font-medium">
-<li><a class="text-slate-400 hover:text-primary transition-colors" href="contact.html">Contact Us</a></li>
-<li><a class="text-slate-400 hover:text-primary transition-colors" href="#">About</a></li>
-<li><a class="text-slate-400 hover:text-primary transition-colors" href="#">Frequently Asked Questions</a></li>
+<li><a class="text-slate-400 hover:text-primary transition-colors" href="home5.html">Contact Us</a></li>
+<li><a class="text-slate-400 hover:text-primary transition-colors" href="home5.html">About</a></li>
+<li><a class="text-slate-400 hover:text-primary transition-colors" href="home5.html">Frequently Asked Questions</a></li>
 <li><a class="text-slate-400 hover:text-primary transition-colors" href="home5.html">Terms & Conditions</a></li>
 </ul>
 </div>
@@ -1800,9 +1846,9 @@
 <div>
 <h4 class="text-sm font-bold text-white uppercase tracking-widest mb-6">Customer Service</h4>
 <ul class="space-y-4 text-sm font-medium">
-<li><a class="text-slate-400 hover:text-primary transition-colors" href="returns-policy.html">Return and refund policy</a></li>
-<li><a class="text-slate-400 hover:text-primary transition-colors" href="#">Shipping & delivery</a></li>
-<li><a class="text-slate-400 hover:text-primary transition-colors" href="#">Privacy and security</a></li>
+<li><a class="text-slate-400 hover:text-primary transition-colors" href="home5.html">Return and refund policy</a></li>
+<li><a class="text-slate-400 hover:text-primary transition-colors" href="home5.html">Shipping & delivery</a></li>
+<li><a class="text-slate-400 hover:text-primary transition-colors" href="home5.html">Privacy and security</a></li>
 </ul>
 </div>
 <!-- Column 5 -->
@@ -3048,6 +3094,44 @@ section.cp-hero {
      padding before touching content. */
   nav.glass-nav.h5-engine > div { padding-inline: var(--h5-row-px, 2rem) !important; }
 
+  /* --- 2026-10-24 nav spacing tune (desktop only) — side padding removed
+     2026-10-25: the outer inset this rule used to provide (clamp(24px,
+     3.25vw, 64px)) is now supplied by the responsive container further up in
+     this file (90% viewport width + 16px engine padding floor, centered),
+     which pins the logo and the 5 KD pill to the exact 5% viewport lines at
+     every desktop width. Padding is set to the engine's own FLOOR.pad (8px)
+     here: the measuring engine reads this as its natural and holds it (its
+     floor is also 8px, so it never grows back), keeping the only remaining
+     inset small and predictable. The logo + department group sits flush
+     LEFT and the utility group
+     (search, lang, download, dark mode, cart, 5 KD pill) flush RIGHT, with
+     the left and right outer gaps EQUAL. The logo->departments gap is
+     tightened 48px -> 32px (mockup) and department-to-department gaps stay
+     32px (gap-8, unchanged). The measured engine reads these as its
+     naturals and keeps scaling them symmetrically on narrower desktops
+     (its own .h5-engine rules above have higher specificity and still win
+     while the engine is active). Mobile/tablet (<768px) and portrait never
+     match this block. --- */
+  nav.glass-nav > div,
+  html.lang-ar nav.glass-nav > div {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  nav.glass-nav > div > div:first-child,
+  html.lang-ar nav.glass-nav > div > div:first-child { gap: 52.8px; } /* 2026-10-25: logo->first-department gap: 32 -> 33.6 (+5%, imperceptible) -> 48 -> 52.8 (+10%) on user request */
+
+  /* --- 2026-10-25: department-to-department gap +5% (was 22px, then 23.1px, now 25.47px = 22 × 1.05³) ----
+     The 22px base came from home5-mobile.css (gap: 22px !important, shared
+     file — not modified). This page-local rule wins the !important tie by
+     stylesheet order, and the measuring engine reads 23.1px as its natural,
+     scaling it with the rest of the row on narrower desktops. Scoped to
+     >=1241px so the 1024-1240px compression tiers in home5-mobile.css keep
+     their own tighter gaps. Fonts were raised 10% in the markup
+     (15.4px / 12.1px); the engine parses those as its new reference sizes. */
+  @media (min-width: 1241px) and (orientation: landscape) {
+    nav.glass-nav div.gap-8 { gap: 25.47px !important; }
+  }
+
   /* --- text-size variables for the LAST-RESORT ladder stages -------------
      Only reached (deep in the ladder) when gaps + padding + burger + logo
      steps together still cannot fit: the department fonts and the pill font
@@ -3055,7 +3139,7 @@ section.cp-hero {
      values in force, so wide desktops never see them change. */
   nav.glass-nav.h5-engine div.gap-8 a,
   html.lang-ar nav.glass-nav.h5-engine div.gap-8 a {
-    font-size: var(--h5-dept-font, 14px) !important;
+    font-size: var(--h5-dept-font, 16px) !important;
   }
   /* The i18n engine pins Arabic text runs it considers too small to an
      inline 12.88px minimum (enforceMinFontSize). The nav governs its OWN
@@ -3065,13 +3149,13 @@ section.cp-hero {
      (span.block + anything inside it) keeps the smaller sub size. */
   nav.glass-nav.h5-engine div.gap-8 a > span:not(.block),
   html.lang-ar nav.glass-nav.h5-engine div.gap-8 a > span:not(.block) {
-    font-size: var(--h5-dept-font, 14px) !important;
+    font-size: var(--h5-dept-font, 16px) !important;
   }
   nav.glass-nav.h5-engine div.gap-8 a span.block,
   nav.glass-nav.h5-engine div.gap-8 a span.block span,
   html.lang-ar nav.glass-nav.h5-engine div.gap-8 a span.block,
   html.lang-ar nav.glass-nav.h5-engine div.gap-8 a span.block span {
-    font-size: var(--h5-dept-sub-font, 11px) !important;
+    font-size: var(--h5-dept-sub-font, 13px) !important;
   }
   nav.glass-nav.h5-engine #home5-min5-pill,
   nav.glass-nav.h5-engine #home5-min5-pill span {
@@ -3419,10 +3503,16 @@ html.dark #home5-burger-btn { color: #ffffff; }
   function fontRefs() {
     var a = deptBox.querySelector('a');
     var m = a ? (a.className.match(/text-\[([0-9.]+)px\]/)) : null;
-    var main = m ? parseFloat(m[1]) : 14;
+    var main = m ? parseFloat(m[1]) : 16;
+    /* sub-line size parsed from the markup too (2026-10-24: sub bumped
+       11px -> 13px with the main line), so the ladder scales the real
+       second-line size instead of a stale hardcoded 11px. */
+    var sb = a ? a.querySelector('span.block') : null;
+    var sm = sb ? (sb.className.match(/text-\[([0-9.]+)px\]/)) : null;
+    var sub = sm ? parseFloat(sm[1]) : 13;
     var ar = document.documentElement.classList.contains('lang-ar');
     if (ar) main = main * 1.15;
-    return { main: main, sub: (ar ? 11 * 1.15 : 11), pill: 12,
+    return { main: main, sub: (ar ? sub * 1.15 : sub), pill: 11.4, /* cart pill -5% */
              sFloor: (ar ? 9.6 : 11) / main };
   }
 
@@ -3470,7 +3560,7 @@ html.dark #home5-burger-btn { color: #ffffff; }
     var logoH = Math.max(30, nat.logoH * stage.logo);
     var ts = (typeof textScale === 'number') ? textScale : 1;
     nav.style.setProperty('--h5-logo-h', logoH.toFixed(1) + 'px');
-    nav.style.setProperty('--h5-dept-font', (nat.refMain * ts).toFixed(2) + 'px');
+    nav.style.setProperty('--h5-dept-font', (nat.refMain * ts * 0.95).toFixed(2) + 'px'); /* dept names -5% (desktop request) */
     nav.style.setProperty('--h5-dept-sub-font', (nat.refSub * ts).toFixed(2) + 'px');
     nav.style.setProperty('--h5-pill-font', (nat.refPill * ts).toFixed(2) + 'px');
     return logoH;

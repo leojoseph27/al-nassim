@@ -204,7 +204,7 @@ export default function AdminApp({ initialTab }: { initialTab: Tab }) {
     fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" })
       .catch(() => {})
       .finally(() => {
-        window.location.href = "/admin/login";
+        window.location.href = "/admin/login?redirect=%2Fadmin.html";
       });
   }
 

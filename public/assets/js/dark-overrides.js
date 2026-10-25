@@ -531,3 +531,21 @@ window.addEventListener("pageshow", function () {
   });
 })();
 
+
+/* 2026-10-25: mobile bottom-nav items — solid white in dark mode, applied as
+   inline !important so no stylesheet rule can render them grey. Light mode
+   restores the stylesheet color. Re-applied on theme flips and re-renders. */
+(function () {
+  function applyMbnavColors() {
+    var dark = document.documentElement.classList.contains("dark");
+    document.querySelectorAll("#mobile-bottom-nav .mbnav-item").forEach(function (el) {
+      if (dark) el.style.setProperty("color", "#ffffff", "important");
+      else el.style.removeProperty("color");
+    });
+  }
+  applyMbnavColors();
+  document.addEventListener("DOMContentLoaded", applyMbnavColors);
+  window.addEventListener("load", applyNavColorsRetry);
+  function applyNavColorsRetry() { applyMbnavColors(); setTimeout(applyMbnavColors, 300); }
+  new MutationObserver(function () { applyMbnavColors(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+})();

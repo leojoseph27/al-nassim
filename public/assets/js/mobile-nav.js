@@ -113,6 +113,20 @@
     var html = '<div class="px-5 py-2">';
     for (var i = 0; i < categories.length; i++) {
       var cat = categories[i];
+      /* 2026-10-25: departments WITHOUT subcategories (Packaging Manufacturer,
+         Cold Rooms) render as plain links — no accordion arrow, tapping goes
+         to the department page. Only real accordions get the arrow. */
+      if (!cat.subcats || cat.subcats.length === 0) {
+        html += '<a href="' + cat.href + '" class="mobile-plain-link flex items-center justify-between w-full py-3 px-3 rounded-lg text-sm font-bold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">';
+        var plainParts = cat.name.split(/\s+/);
+        html += '<span class="flex flex-col items-start leading-tight">';
+        for (var pp = 0; pp < plainParts.length; pp++) {
+          if (pp > 0) html += '<span class="text-[11px] font-semibold text-gray-500 dark:text-gray-400">' + plainParts[pp] + '</span>';
+          else html += '<span>' + plainParts[pp] + '</span>';
+        }
+        html += '</span></a>';
+        continue;
+      }
       html += '<div class="mobile-accordion-item mb-1">';
       // Header row
       html += '<button class="mobile-accordion-trigger flex items-center justify-between w-full py-3 px-3 rounded-lg text-sm font-bold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" data-index="' + i + '">';

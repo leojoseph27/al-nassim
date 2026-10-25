@@ -110,7 +110,8 @@
         /* 2026-10-25: "You May Also Like" image boxes — light tint in light mode,
            dark surface in dark mode. Dark mode also disables mix-blend-multiply
            (multiply on a dark background would black out the product). */
-        main > section.mt-32 #yml-section .yml-img-box { background-color: #ffffff !important; }
+        #yml-section .yml-img-box { background-color: #ffffff !important; border: 1px solid rgba(0, 3, 8, 0.12) !important; }
+        html.dark #yml-section .yml-img-box { border-color: rgba(255, 255, 255, 0.12) !important; background-color: #ffffff !important; }
         html.dark #yml-section .yml-img-box { background-color: #ffffff !important; }
         html.dark #yml-section .yml-img-box img { mix-blend-mode: normal !important; }
         /* 2026-10-25: body is now white (matches supermarket.html), so give the
@@ -398,7 +399,7 @@
 <link rel="stylesheet" href="assets/css/nav-popover-mobile.css?v=10"/>
 <script src="assets/js/nav-popover-mobile.js?v=5" defer></script>
 <link rel="stylesheet" href="assets/css/home5-mobile.css?v=4">
-<link rel="stylesheet" href="assets/css/dark-overrides.css?v=20261030">
+<link rel="stylesheet" href="assets/css/dark-overrides.css?v=nw1101">
 <!-- TOP-NAV ENGINE + AR RULES (from houseware.html) — in <head> so the nav renders in its final state from the very first paint (prevents old-nav FOUC). -->
 <style>
 /* =====================================================================
@@ -2082,6 +2083,10 @@ setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.st
             var onHome = (path === '' || path === 'home5.html' || path === 'index.html');
             var homeBtn = nav.querySelector('[data-mbnav="home"]');
             if (homeBtn && onHome) homeBtn.classList.add('mbnav-active');
+            /* 2026-10-25: mark CART active on this page, same as Home on home5 */
+            var onCart = (path === 'cart.html');
+            var cartActive = nav.querySelector('[data-mbnav="cart"]');
+            if (cartActive && onCart) cartActive.classList.add('mbnav-active');
 
             if (homeBtn) homeBtn.addEventListener('click', function () {
                 if (onHome) return;
@@ -2120,14 +2125,14 @@ setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.st
     })();
 </script>
 <script src="assets/js/theme.js" defer></script>
-<script src="assets/js/dark-overrides.js?v=20261013" defer></script>
+<script src="assets/js/dark-overrides.js?v=20261030" defer></script>
 <script src="assets/js/cart-nav.js" defer></script>
 <script src="assets/js/product-nav.js" defer></script>
 <script src="assets/js/listing-pagination.js?v=4" defer></script>
 <script src="assets/js/search.js" defer></script>
 <script src="assets/js/account.js" defer></script>
 <script src="assets/js/nav-submenu.js" defer></script>
-<script src="assets/js/mobile-nav.js" defer></script>
+<script src="assets/js/mobile-nav.js?v=2" defer></script>
 <!-- ==================== MOBILE SEARCH WIRING ====================
      Wires the mobile inline search bar to a dropdown below the input. Reuses
      NassimSearch filtering logic; does NOT open the old overlay popup. -->

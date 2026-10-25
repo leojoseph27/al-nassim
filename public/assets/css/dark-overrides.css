@@ -887,8 +887,16 @@ html.lang-ar #h5-b-langval { font-size: 13px !important; line-height: 19.5px !im
 
 
 /* 2026-10-25: mobile top-nav language toggle — black text in light mode,
-   white in dark mode (matches houseware2.html's page-local rule). */
+   white in dark mode (matches houseware2.html's page-local rule). The visible
+   mobile label is the .nassim-lang-off span, which the direct-switch styles
+   force to opacity 0.45 — THAT opacity was rendering it grey. On mobile it is
+   the only label shown, so restore full opacity there. */
 @media (max-width: 767px), (orientation: portrait) {
   html:not(.dark) #home5-lang-btn span { color: #000000 !important; }
   html.dark #home5-lang-btn span { color: #ffffff !important; }
+  #home5-lang-btn span[data-lang].nassim-lang-off { opacity: 1 !important; }
 }
+
+/* 2026-10-25: mobile bottom-nav icons/labels — solid white in dark mode
+   (was rgba(255,255,255,0.6), which read as grey). Light mode unchanged. */
+.dark .mbnav-item { color: #ffffff !important; }

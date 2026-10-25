@@ -107,6 +107,12 @@
         .yml-carousel.is-grabbing { cursor: grabbing !important; }
         .yml-carousel { cursor: grab; }
         .cart-item.fade-out { opacity: 0; transform: translateX(20px); transition: all 0.3s ease; }
+        /* 2026-10-25: "You May Also Like" image boxes — light tint in light mode,
+           dark surface in dark mode. Dark mode also disables mix-blend-multiply
+           (multiply on a dark background would black out the product). */
+        main > section.mt-32 #yml-section .yml-img-box { background-color: #ffffff !important; }
+        html.dark #yml-section .yml-img-box { background-color: #ffffff !important; }
+        html.dark #yml-section .yml-img-box img { mix-blend-mode: normal !important; }
         /* 2026-10-25: body is now white (matches supermarket.html), so give the
            product cards a subtle outline to keep them visually separate. */
         .cart-item { border: 1px solid rgba(0, 3, 8, 0.12); }
@@ -352,7 +358,9 @@
         aspect-ratio: 1 / 1 !important; margin-bottom: 0.45rem !important;
         border-radius: 0.625rem !important; overflow: hidden !important;
     }
-    main > section.mt-32 .product-image-container img { width: 100% !important; height: 100% !important; object-fit: cover !important; }
+    main > section.mt-32 .product-image-container img { width: 100% !important; height: 100% !important; object-fit: contain !important; object-position: center !important; }
+    /* 2026-10-25: contain (was cover) so the WHOLE product is visible on mobile,
+       letterboxed on the same tint as light mode (dark uses its surface color). */
     /* Mobile-only: remove the "View Product" hover bar from recommendation cards.
        The whole card (except the ATC button below) is tappable and opens the
        Product View via product-nav.js delegation, so the button is redundant on
@@ -390,7 +398,7 @@
 <link rel="stylesheet" href="assets/css/nav-popover-mobile.css?v=10"/>
 <script src="assets/js/nav-popover-mobile.js?v=5" defer></script>
 <link rel="stylesheet" href="assets/css/home5-mobile.css?v=4">
-<link rel="stylesheet" href="assets/css/dark-overrides.css?v=20261027">
+<link rel="stylesheet" href="assets/css/dark-overrides.css?v=20261030">
 <!-- TOP-NAV ENGINE + AR RULES (from houseware.html) — in <head> so the nav renders in its final state from the very first paint (prevents old-nav FOUC). -->
 <style>
 /* =====================================================================
@@ -1496,7 +1504,7 @@ setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.st
         ' data-tags="' + esc(p.tags || '') + '"' +
         ' data-department-slug="' + esc(p.departmentSlug || '') + '"' +
         ' data-section-slug="' + esc(p.sectionSlug || '') + '">' +
-        '<div class="aspect-[4/5] bg-surface flex items-center justify-center mb-6 overflow-hidden relative product-image-container" style="background:#F6F7FE"><img loading="lazy" class="w-full h-full object-contain object-center mix-blend-multiply group-hover:scale-105 transition-transform duration-700 ease-in-out" src="' + esc(p.img || 'topcar/dummy.png') + '" alt="' + esc(p.name) + '"/><div class="absolute bottom-0 left-0 w-full p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-primary/80 backdrop-blur-md"><a href="product-view.html?id=' + encodeURIComponent(p.id) + '" data-view-product class="view-product-btn w-full py-3 text-on-primary font-headline text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"><span class="material-symbols-outlined text-xs">arrow_forward</span> View Product</a></div></div>' +
+        '<div class="aspect-[4/5] bg-surface-container-lowest dark:bg-surface-container flex items-center justify-center mb-6 overflow-hidden relative product-image-container yml-img-box"><img loading="lazy" class="w-full h-full object-contain object-center mix-blend-multiply group-hover:scale-105 transition-transform duration-700 ease-in-out" src="' + esc(p.img || 'topcar/dummy.png') + '" alt="' + esc(p.name) + '"/><div class="absolute bottom-0 left-0 w-full p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-primary/80 backdrop-blur-md"><a href="product-view.html?id=' + encodeURIComponent(p.id) + '" data-view-product class="view-product-btn w-full py-3 text-on-primary font-headline text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"><span class="material-symbols-outlined text-xs">arrow_forward</span> View Product</a></div></div>' +
         '<p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 mb-1">' + line + '</p>' +
         '<h3 class="font-headline font-bold text-primary dark:text-white text-sm mb-2">' + esc(p.name) + '</h3>' +
         '<p class="font-headline font-black text-secondary">KD ' + price.toFixed(3) + '</p>' +

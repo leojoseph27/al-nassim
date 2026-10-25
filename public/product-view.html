@@ -47,9 +47,12 @@
         /* ---- Related Products card border (ALL viewports) ----
            The card image-box background matches the page background, so give
            it a subtle outline to keep the cards visually separate. Desktop
-           and mobile; dark mode gets a light border. */
-        #related-grid > a > div:first-child { border: 1px solid rgba(0, 3, 8, 0.12) !important; }
-        html.dark #related-grid > a > div:first-child { border-color: rgba(255, 255, 255, 0.12) !important; }
+           and mobile; dark mode gets a light border. Dark mode also switches
+           the image box to the dark surface and disables mix-blend-multiply
+           (multiply on a dark background would black out the product). */
+        #related-grid > a > div:first-child { border: 1px solid rgba(0, 3, 8, 0.12) !important; background-color: #ffffff !important; } /* light: tint; dark overridden below to white */
+        html.dark #related-grid > a > div:first-child { border-color: rgba(255, 255, 255, 0.12) !important; background-color: #ffffff !important; }
+        html.dark #related-grid > a > div:first-child img { mix-blend-mode: normal !important; }
 
         /* =====================================================================
            MOBILE PRODUCT VIEW (≤767px) — premium touch-friendly layout.
@@ -135,6 +138,7 @@
                 scroll-snap-align: start;
             }
             #related-grid > a > div:first-child { margin-bottom: 0.75rem !important; border-radius: 0.75rem !important; }
+            #related-grid > a > div:first-child img { object-fit: contain !important; object-position: center !important; }
             /* 2026-10-25: card image-box border — the card background matches the
                page background, so outline it to keep cards visually separate.
                Applies on desktop and mobile; dark mode gets a light border. */
@@ -189,7 +193,7 @@
 <link rel="stylesheet" href="assets/css/nav-popover-mobile.css?v=10"/>
 <script src="assets/js/nav-popover-mobile.js?v=5" defer></script>
 <link rel="stylesheet" href="assets/css/home5-mobile.css?v=4">
-<link rel="stylesheet" href="assets/css/dark-overrides.css?v=20261027">
+<link rel="stylesheet" href="assets/css/dark-overrides.css?v=20261030">
 <link rel="stylesheet" href="assets/css/rtl-overrides.css?v=6"/>
 <script src="assets/js/i18n-data.js?v=5" defer></script>
 <script src="assets/js/product-name.js?v=1"></script>
@@ -745,9 +749,8 @@
 <!-- Main Display -->
 <div class="flex-1 bg-surface-container-lowest dark:bg-surface-container rounded-xl overflow-hidden aspect-[4/5] md:aspect-square relative group" id="product-img-container">
 <img class="w-full h-full object-contain transition-all duration-700" id="main-product-image" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'%3E%3C/svg%3E" alt="Product image" style="opacity:0;transition:opacity 0.4s ease;"/>
-<div class="absolute top-8 right-6 flex flex-col gap-3 z-40">
-<button class="bg-surface/80 dark:bg-surface-container/80 backdrop-blur-md p-3 rounded-full hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center justify-center" id="add-favorite-btn" onclick="toggleFavorite()"><span class="material-symbols-outlined text-lg transition-all duration-300" id="fav-icon">favorite</span></button>
-</div>
+<!-- 2026-10-25: wishlist heart button removed (wishlist feature retired). It
+     used to flash here on mobile while the deferred account.js hid it. -->
 </div>
 </div>
 <!-- Product Info & Actions -->
@@ -1389,7 +1392,7 @@
       related = related.slice(0, 4);
       var relatedGrid = document.getElementById('related-grid');
       relatedGrid.innerHTML = related.map(function(p) {
-        return '<a href="product-view.html?id=' + encodeURIComponent(p.id) + '" data-product-card class="group cursor-pointer"><div class="aspect-[4/5] bg-surface flex items-center justify-center rounded-xl overflow-hidden mb-6 relative" style="background:#F6F7FE"><img loading="lazy" class="w-full h-full object-contain object-center mix-blend-multiply transition-transform duration-700 group-hover:scale-105" src="' + escapeHtml(p.img) + '" alt="' + escapeHtml(p.name) + '"/>' +
+        return '<a href="product-view.html?id=' + encodeURIComponent(p.id) + '" data-product-card class="group cursor-pointer"><div class="aspect-[4/5] bg-surface-container-lowest dark:bg-surface-container flex items-center justify-center rounded-xl overflow-hidden mb-6 relative related-img-box"><img loading="lazy" class="w-full h-full object-contain object-center mix-blend-multiply transition-transform duration-700 group-hover:scale-105" src="' + escapeHtml(p.img) + '" alt="' + escapeHtml(p.name) + '"/>' +
           /* Desktop overlay — slides up on hover, hidden on mobile */
           '<div class="absolute bottom-4 left-4 right-4 translate-y-12 md:translate-y-12 group-hover:translate-y-0 transition-transform duration-300 hidden md:block"><span class="block w-full bg-surface-container-lowest/90 dark:bg-surface-container-high/90 backdrop-blur-sm text-primary dark:text-white font-bold text-[10px] uppercase py-3 rounded-sm shadow-xl text-center">View Product</span></div>' +
           /* Mobile overlay — always visible, Add to Cart button; hidden on desktop */

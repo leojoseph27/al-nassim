@@ -554,10 +554,11 @@ html.dark #page-numbers button.text-primary:not(.bg-primary) {
       0 4px 16px rgba(0, 0, 0, 0.35) !important;
   }
   main > section.mt-32 .product-image-container {
-    background: #f2f5fa !important;
+    background: #ffffff !important; /* 2026-10-25: white (was #f2f5fa blue-grey tint) to match dark mode */
     border-radius: 0.5rem !important;
   }
-  html.dark main > section.mt-32 .product-image-container { background: #1f2630 !important; }
+  html.dark main > section.mt-32 .product-image-container { background: #ffffff !important; }
+  html.dark main > section.mt-32 .product-image-container img { mix-blend-mode: normal !important; }
 }
 
 /* Fix product view buttons: override Tailwind's dark: utilities that resolve to light colors */
@@ -884,3 +885,10 @@ html.lang-ar #h5-b-langval { font-size: 13px !important; line-height: 19.5px !im
   .js-price-manual .nps-box { display: none !important; }
 }
 
+
+/* 2026-10-25: mobile top-nav language toggle — black text in light mode,
+   white in dark mode (matches houseware2.html's page-local rule). */
+@media (max-width: 767px), (orientation: portrait) {
+  html:not(.dark) #home5-lang-btn span { color: #000000 !important; }
+  html.dark #home5-lang-btn span { color: #ffffff !important; }
+}

@@ -718,11 +718,12 @@ footer .text-primary.material-symbols-outlined {
     column-gap: 0.5rem !important;
     row-gap: 0.4rem !important;
   }
-  /* Logo group: row 1, left. Enlarge the logo vs. the old mobile h-9 (2.25rem);
-     use 2.5rem so branding is the primary visual element without crowding row 1. */
+  /* Logo group: row 1, left. Enlarge the logo vs. the old mobile h-9 (2.25rem).
+     2026-10-25: +15% again per request (46px -> 52.9px); branding stays the
+     primary visual element without crowding row 1. */
   nav.fixed.top-0 .flex.items-center.gap-12 > a[href="home5.html"] img,
   nav.fixed.top-0 a[href="home5.html"] > img {
-    height: 2.5rem !important;
+    height: 52.9px !important;
   }
   /* The desktop department-links wrapper (hidden md:flex) stays hidden on mobile */
   /* The mobile search: full width -> forces it onto row 2 */
@@ -882,3 +883,4 @@ html.lang-ar #h5-b-langval { font-size: 13px !important; line-height: 19.5px !im
   .js-price-manual { display: none !important; }
   .js-price-manual .nps-box { display: none !important; }
 }
+

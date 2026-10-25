@@ -44,6 +44,13 @@
         #product-img-container { background-color: #FFFFFF !important; }
         #thumbnail-gallery .thumbnail-item { background-color: #FFFFFF !important; }
 
+        /* ---- Related Products card border (ALL viewports) ----
+           The card image-box background matches the page background, so give
+           it a subtle outline to keep the cards visually separate. Desktop
+           and mobile; dark mode gets a light border. */
+        #related-grid > a > div:first-child { border: 1px solid rgba(0, 3, 8, 0.12) !important; }
+        html.dark #related-grid > a > div:first-child { border-color: rgba(255, 255, 255, 0.12) !important; }
+
         /* =====================================================================
            MOBILE PRODUCT VIEW (≤767px) — premium touch-friendly layout.
            Desktop (≥768px) and tablet are 100% untouched. Every rule below is
@@ -128,6 +135,11 @@
                 scroll-snap-align: start;
             }
             #related-grid > a > div:first-child { margin-bottom: 0.75rem !important; border-radius: 0.75rem !important; }
+            /* 2026-10-25: card image-box border — the card background matches the
+               page background, so outline it to keep cards visually separate.
+               Applies on desktop and mobile; dark mode gets a light border. */
+            #related-grid > a > div:first-child { border: 1px solid rgba(0, 3, 8, 0.12); }
+            html.dark #related-grid > a > div:first-child { border-color: rgba(255, 255, 255, 0.12); }
   across the full width; min gap so they never touch). EN = unchanged. ---- */
   html.lang-ar .related-header > div:first-child { margin-left: 0 !important; }
   .related-header { row-gap: 16px; }
@@ -177,7 +189,7 @@
 <link rel="stylesheet" href="assets/css/nav-popover-mobile.css?v=10"/>
 <script src="assets/js/nav-popover-mobile.js?v=5" defer></script>
 <link rel="stylesheet" href="assets/css/home5-mobile.css?v=4">
-<link rel="stylesheet" href="assets/css/dark-overrides.css?v=20261013">
+<link rel="stylesheet" href="assets/css/dark-overrides.css?v=20261027">
 <link rel="stylesheet" href="assets/css/rtl-overrides.css?v=6"/>
 <script src="assets/js/i18n-data.js?v=5" defer></script>
 <script src="assets/js/product-name.js?v=1"></script>
@@ -1377,7 +1389,7 @@
       related = related.slice(0, 4);
       var relatedGrid = document.getElementById('related-grid');
       relatedGrid.innerHTML = related.map(function(p) {
-        return '<a href="product-view.html?id=' + encodeURIComponent(p.id) + '" data-product-card class="group cursor-pointer"><div class="aspect-[4/5] bg-surface-container-lowest dark:bg-surface-container rounded-xl overflow-hidden mb-6 relative"><img loading="lazy" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" src="' + escapeHtml(p.img) + '" alt="' + escapeHtml(p.name) + '"/>' +
+        return '<a href="product-view.html?id=' + encodeURIComponent(p.id) + '" data-product-card class="group cursor-pointer"><div class="aspect-[4/5] bg-surface flex items-center justify-center rounded-xl overflow-hidden mb-6 relative" style="background:#F6F7FE"><img loading="lazy" class="w-full h-full object-contain object-center mix-blend-multiply transition-transform duration-700 group-hover:scale-105" src="' + escapeHtml(p.img) + '" alt="' + escapeHtml(p.name) + '"/>' +
           /* Desktop overlay — slides up on hover, hidden on mobile */
           '<div class="absolute bottom-4 left-4 right-4 translate-y-12 md:translate-y-12 group-hover:translate-y-0 transition-transform duration-300 hidden md:block"><span class="block w-full bg-surface-container-lowest/90 dark:bg-surface-container-high/90 backdrop-blur-sm text-primary dark:text-white font-bold text-[10px] uppercase py-3 rounded-sm shadow-xl text-center">View Product</span></div>' +
           /* Mobile overlay — always visible, Add to Cart button; hidden on desktop */
@@ -2435,7 +2447,7 @@
      their own tighter gaps. Fonts were raised 10% in the markup
      (15.4px / 12.1px); the engine parses those as its new reference sizes. */
   @media (min-width: 1241px) and (orientation: landscape) {
-    nav.glass-nav div.gap-8 { gap: 25.47px !important; }
+    nav.glass-nav div.gap-8 { gap: 42px !important; } /* 2026-10-25: dept gaps standardized to houseware2 reference (42px) */
   }
 
   /* --- text-size variables for the LAST-RESORT ladder stages -------------

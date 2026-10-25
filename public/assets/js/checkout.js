@@ -572,7 +572,12 @@
           } else { showToastFallback(msg, "error"); }
           if (fieldEl) {
             fieldEl.classList.add("ring-2", "ring-red-500", "border-red-500");
-            try { fieldEl.focus(); } catch (e2) {}
+            /* 2026-10-25: scroll the invalid FIELD into view too — focus()
+               alone scrolls the page for text inputs (mobile keyboard), but
+               <select> dropdowns don't scroll on focus, so the user was left
+               looking at the wrong part of the form. */
+            try { fieldEl.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e1) {}
+            try { fieldEl.focus({ preventScroll: true }); } catch (e2) { try { fieldEl.focus(); } catch (e4) {} }
             fieldEl.addEventListener("input", function clearMark() {
               fieldEl.classList.remove("ring-2", "ring-red-500", "border-red-500");
               fieldEl.removeEventListener("input", clearMark);

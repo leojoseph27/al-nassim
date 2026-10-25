@@ -173,6 +173,7 @@
      ligature text and body typography fell back to system fonts. -->
 <link rel="stylesheet" href="/assets/css/fonts-local.css?v=20261013"/>
 <link rel="stylesheet" href="/assets/css/tailwind.css?v=20261013c">
+<link rel="stylesheet" href="/assets/css/dark-overrides.css?v=20261027">
 <style>
 /* MOBILE ONLY (<=767px): the bottom navigation has a CONSTANT explicit
    height (62.5px content + safe-area inset). It must never grow or shrink
@@ -212,6 +213,7 @@
         }
     }
 </style>
+<style>/* 2026-10-25: mobile top-nav logo +15% (36px -> 41.4px). Desktop unchanged. */@media (max-width: 767px), (orientation: portrait) { img.h-9[alt="AL-Nassim Logo"] { height: 52.9px !important; } }</style>
 </head>
 <body class="bg-surface dark:bg-[#0a0f14] font-body text-on-surface dark:text-white antialiased">
 

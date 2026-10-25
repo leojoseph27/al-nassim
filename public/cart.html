@@ -390,7 +390,7 @@
 <link rel="stylesheet" href="assets/css/nav-popover-mobile.css?v=10"/>
 <script src="assets/js/nav-popover-mobile.js?v=5" defer></script>
 <link rel="stylesheet" href="assets/css/home5-mobile.css?v=4">
-<link rel="stylesheet" href="assets/css/dark-overrides.css?v=20261013">
+<link rel="stylesheet" href="assets/css/dark-overrides.css?v=20261027">
 <!-- TOP-NAV ENGINE + AR RULES (from houseware.html) — in <head> so the nav renders in its final state from the very first paint (prevents old-nav FOUC). -->
 <style>
 /* =====================================================================
@@ -545,7 +545,7 @@
      their own tighter gaps. Fonts were raised 10% in the markup
      (15.4px / 12.1px); the engine parses those as its new reference sizes. */
   @media (min-width: 1241px) and (orientation: landscape) {
-    nav.glass-nav div.gap-8 { gap: 25.47px !important; }
+    nav.glass-nav div.gap-8 { gap: 42px !important; } /* 2026-10-25: dept gaps standardized to houseware2 reference (42px) */
   }
 
   /* --- text-size variables for the LAST-RESORT ladder stages -------------
@@ -1453,31 +1453,62 @@ setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.st
 <p class="text-on-surface-variant dark:text-white/70 mb-8 max-w-md">Looks like you haven't added anything to your collection yet. Start exploring our houseware.</p>
 <a href="home5.html" class="bg-primary text-on-primary px-10 py-4 font-headline text-xs font-black uppercase tracking-[0.2em] rounded-sm hover:bg-secondary transition-all">Continue Shopping</a>
 </div>
-<!-- You May Also Like Section -->
-<section class="mt-32" style="display:none;">
+<!-- You May Also Like Section — populated from the live product catalog
+     (same /api/catalog source as product-view.html's "Related Products").
+     Real products replace the old hardcoded dummy placeholders; the section
+     stays hidden until the catalog renders. -->
+<section class="mt-32" id="yml-section" style="display:none;">
 <div class="flex justify-between items-end mb-12">
 <div><h2 class="font-headline text-3xl font-black text-primary dark:text-white">You May Also Like</h2></div>
 <div class="flex gap-2"><button class="p-3 border border-outline-variant dark:border-outline-variant/50 hover:bg-primary hover:text-on-primary transition-all"><span class="material-symbols-outlined">west</span></button><button class="p-3 border border-outline-variant dark:border-outline-variant/50 hover:bg-primary hover:text-on-primary transition-all"><span class="material-symbols-outlined">east</span></button></div>
 </div>
-<div class="yml-carousel hide-scrollbar" data-yml-carousel>
-<div class="group cursor-pointer product-card transition-all duration-500" data-category="Tableware" data-desc="Crafted from high-grade polished silver, this minimalist spoon brings timeless elegance to any dining setting." data-img="topcar/dummy.png" data-name="dummy" data-price="KD 0.000" data-product-id="minimalist-table-spoon" data-sku="AN-SP-MN-01" data-tags="Polished Silver,Dishwasher Safe">
-<div class="aspect-[4/5] bg-surface-container-lowest dark:bg-surface-container mb-6 overflow-hidden relative product-image-container"><img loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" src="topcar/dummy.png"/><div class="absolute bottom-0 left-0 w-full p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-primary/80 backdrop-blur-md"><a href="product-view.html" data-view-product class="view-product-btn w-full py-3 text-on-primary font-headline text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"><span class="material-symbols-outlined text-xs">arrow_forward</span> View Product</a></div></div>
-<p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 mb-1">Tableware</p><h3 class="font-headline font-bold text-primary dark:text-white text-sm mb-2">dummy</h3><p class="font-headline font-black text-secondary">KD 0.000</p>
-</div>
-<div class="group cursor-pointer product-card transition-all duration-500" data-category="Home Care" data-desc="A complete sustainable solution for your home, featuring naturally treated wood and organic fiber materials." data-img="topcar/dummy.png" data-name="dummy" data-price="KD 0.000" data-product-id="eco-friendly-cleaning-tool-set" data-sku="AN-HC-EC-12" data-tags="Organic Fiber,Sustainable">
-<div class="aspect-[4/5] bg-surface-container-lowest dark:bg-surface-container mb-6 overflow-hidden relative product-image-container"><img loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" src="topcar/dummy.png"/><div class="absolute bottom-0 left-0 w-full p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-primary/80 backdrop-blur-md"><a href="product-view.html" data-view-product class="view-product-btn w-full py-3 text-on-primary font-headline text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"><span class="material-symbols-outlined text-xs">arrow_forward</span> View Product</a></div></div>
-<p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 mb-1">Home Care</p><h3 class="font-headline font-bold text-primary dark:text-white text-sm mb-2">dummy</h3><p class="font-headline font-black text-secondary">KD 0.000</p>
-</div>
-<div class="group cursor-pointer product-card transition-all duration-500" data-category="Ceramics" data-desc="Hand-crafted ceramic with a unique volcanic glaze finish. Each piece is one-of-a-kind, made by master artisans." data-img="topcar/dummy.png" data-name="dummy" data-price="KD 0.000" data-product-id="artisan-ceramic-pitcher" data-sku="AN-CR-PT-07" data-tags="Handmade,Lead-Free">
-<div class="aspect-[4/5] bg-surface-container-lowest dark:bg-surface-container mb-6 overflow-hidden relative product-image-container"><img loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" src="topcar/dummy.png"/><div class="absolute bottom-0 left-0 w-full p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-primary/80 backdrop-blur-md"><a href="product-view.html" data-view-product class="view-product-btn w-full py-3 text-on-primary font-headline text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"><span class="material-symbols-outlined text-xs">arrow_forward</span> View Product</a></div></div>
-<p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 mb-1">Ceramics</p><h3 class="font-headline font-bold text-primary dark:text-white text-sm mb-2">dummy</h3><p class="font-headline font-black text-secondary">KD 0.000</p>
-</div>
-<div class="group cursor-pointer product-card transition-all duration-500" data-category="Accessories" data-desc="Solid dark walnut wood coasters with water-resistant finish and non-slip cork backing." data-img="topcar/dummy.png" data-name="dummy" data-price="KD 0.000" data-product-id="walnut-wood-coaster-set" data-sku="AN-AC-CS-09" data-tags="Solid Wood,Water Resistant">
-<div class="aspect-[4/5] bg-surface-container-lowest dark:bg-surface-container mb-6 overflow-hidden relative product-image-container"><img loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" src="topcar/dummy.png"/><div class="absolute bottom-0 left-0 w-full p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-primary/80 backdrop-blur-md"><a href="product-view.html" data-view-product class="view-product-btn w-full py-3 text-on-primary font-headline text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"><span class="material-symbols-outlined text-xs">arrow_forward</span> View Product</a></div></div>
-<p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 mb-1">Accessories</p><h3 class="font-headline font-bold text-primary dark:text-white text-sm mb-2">dummy</h3><p class="font-headline font-black text-secondary">KD 0.000</p>
-</div>
-</div>
+<div class="yml-carousel hide-scrollbar" data-yml-carousel></div>
 </section>
+<script src="/api/catalog" defer id="nassim-catalog-script" onload="document.dispatchEvent(new Event('nassim:catalog-loaded'))" onerror="window.NASSIM_CATALOG_FAILED=true;document.dispatchEvent(new Event('nassim:catalog-loaded'))"></script>
+<script>
+/* ==================== YOU MAY ALSO LIKE — CATALOG RENDER ====================
+   Renders real products into the carousel once the catalog arrives. Picks a
+   varied sample (shuffled, capped at 8) so the section isn't identical on
+   every visit. Cards reuse the exact dummy-card markup so the existing
+   carousel controls, product navigation and mobile Add-to-Cast wiring work
+   unchanged. Falls back to keeping the section hidden if the catalog fails. */
+(function () {
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function renderYml() {
+    var items = window.NASSIM_PRODUCTS;
+    var track = document.querySelector('#yml-section [data-yml-carousel]');
+    if (!track) return;
+    if (!items || !items.length) return; // catalog failed -> keep section hidden
+    var pool = items.filter(function (p) { return p && p.id && p.name; });
+    for (var i = pool.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = pool[i]; pool[i] = pool[j]; pool[j] = t; }
+    var picks = pool.slice(0, 8);
+    track.innerHTML = picks.map(function (p) {
+      var price = Number(p.price) || 0;
+      var line = esc(p.line || p.category || '');
+      return '<div class="group cursor-pointer product-card transition-all duration-500"' +
+        ' data-category="' + line + '"' +
+        ' data-desc="' + esc(p.desc || '') + '"' +
+        ' data-img="' + esc(p.img || '') + '"' +
+        ' data-name="' + esc(p.name) + '"' +
+        ' data-price="KD ' + price.toFixed(3) + '"' +
+        ' data-product-id="' + esc(p.id) + '"' +
+        ' data-sku="' + esc(p.sku || '') + '"' +
+        ' data-tags="' + esc(p.tags || '') + '"' +
+        ' data-department-slug="' + esc(p.departmentSlug || '') + '"' +
+        ' data-section-slug="' + esc(p.sectionSlug || '') + '">' +
+        '<div class="aspect-[4/5] bg-surface flex items-center justify-center mb-6 overflow-hidden relative product-image-container" style="background:#F6F7FE"><img loading="lazy" class="w-full h-full object-contain object-center mix-blend-multiply group-hover:scale-105 transition-transform duration-700 ease-in-out" src="' + esc(p.img || 'topcar/dummy.png') + '" alt="' + esc(p.name) + '"/><div class="absolute bottom-0 left-0 w-full p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-primary/80 backdrop-blur-md"><a href="product-view.html?id=' + encodeURIComponent(p.id) + '" data-view-product class="view-product-btn w-full py-3 text-on-primary font-headline text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"><span class="material-symbols-outlined text-xs">arrow_forward</span> View Product</a></div></div>' +
+        '<p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 mb-1">' + line + '</p>' +
+        '<h3 class="font-headline font-bold text-primary dark:text-white text-sm mb-2">' + esc(p.name) + '</h3>' +
+        '<p class="font-headline font-black text-secondary">KD ' + price.toFixed(3) + '</p>' +
+        '</div>';
+    }).join('');
+    document.getElementById('yml-section').style.display = '';
+    document.dispatchEvent(new Event('yml:rendered'));
+  }
+  document.addEventListener('nassim:catalog-loaded', renderYml);
+  if (window.NASSIM_PRODUCTS) renderYml();
+})();
+</script>
 </main>
 
 <!-- ===== Shared Footer (same as home5.html) ===== -->
@@ -1849,6 +1880,8 @@ setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.st
       });
     }
     augmentYml();
+    // Re-augment when the catalog-driven recommendations render (async)
+    document.addEventListener("yml:rendered", augmentYml);
 
     // Toast — REUSES the shared #sc-toast implementation used by every product
     // listing page (icon + message via innerHTML, identical styling/CSS). This

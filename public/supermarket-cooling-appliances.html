@@ -3629,7 +3629,7 @@ function applyFiltersAndSort() {
 <script src="assets/js/listing-pagination.js?v=4" defer></script>
 <script src="assets/js/search.js" defer></script>
 <script src="assets/js/account.js" defer></script>
-<script src="assets/js/nav-submenu.js" defer></script>
+<script src="assets/js/nav-submenu.js?v=3" defer></script>
 <script src="assets/js/mobile-nav.js?v=2" defer></script>
 <!-- Dropdown hover show/hide (from home5.html) -->
 <script>(function(){var timer=null,active=null,inside=false;function show(m){m.style.opacity="1";m.style.visibility="visible";m.style.transform="translateY(0)"}function hide(m){m.style.opacity="0";m.style.visibility="hidden";m.style.transform="translateY(10px)";if(active===m)active=null}function scheduleClose(){inside=false;timer=setTimeout(function(){if(!inside&&active)hide(active)},250)}document.querySelectorAll(".dropdown-trigger").forEach(function(tr){var menu=tr.querySelector(".dropdown-menu");if(!menu)return;tr.addEventListener("mouseenter",function(){if(active&&active!==menu)hide(active);clearTimeout(timer);inside=true;show(menu);active=menu});menu.addEventListener("mouseenter",function(){clearTimeout(timer);inside=true});tr.addEventListener("mouseleave",scheduleClose);menu.addEventListener("mouseleave",scheduleClose)})})();</script>

@@ -8,7 +8,7 @@
  *
  *   Cleaning Tools  -> Surface Cleaning, Toilet & Drain
  *   Home & Outdoor  -> Laundry Essentials, Storage and Packaging,
- *                      Picnic Collection
+ *                      Camping Supplies (renamed from Picnic Collection)
  *   Kitchenware     -> Cutlery & Cleaver, Cooking & Utensils
  *
  * (Only subcategories that already exist in the project taxonomy are used —
@@ -47,7 +47,7 @@
     "houseware-home-outdoor.html": [
       { name: "Laundry Essentials", slug: "laundry-essentials" },
       { name: "Storage and Packaging", slug: "storage-and-packaging" },
-      { name: "Picnic Collection", slug: "picnic-collection" }
+      { name: "Camping Supplies", slug: "picnic-collection" }
     ],
     "houseware-kitchenware.html": [
       { name: "Cutlery & Cleaver", slug: "cutlery-cleaver" },
@@ -83,7 +83,7 @@
     ".hw-subpanel{position:absolute;left:100%;top:0;bottom:0;width:0;overflow:hidden;",
     "margin:0;padding:0;z-index:70;background:inherit;",
     "transition:width .22s ease;pointer-events:none}",
-    ".hw-menu.hw-expanded .hw-subpanel{width:15rem;pointer-events:auto;",
+    ".hw-menu.hw-expanded .hw-subpanel{width:17rem;pointer-events:auto;",
     "border:1px solid " + PANEL_BORDER + ";border-left:none;border-radius:0 1rem 1rem 0}",
     ".hw-subset{display:none;flex-direction:column;gap:.9rem;padding:1.5rem;margin:0;list-style:none;white-space:nowrap}",
     ".hw-subset.hw-active{display:flex}",

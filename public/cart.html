@@ -200,6 +200,27 @@
             .delivery-notice .delivery-notice-text { font-size: 0.75rem; }
             html.lang-ar .delivery-notice .delivery-notice-text { font-size: 0.84375rem; }
         }
+        /* Cash on Delivery notice (Order Summary): cream box, orange border,
+           icon left, stacked text right. Scoped to .cod-notice so no existing
+           element is affected. */
+        .cod-notice {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin-top: 1.25rem;
+            background: #FFF4DF;
+            border: 1px solid #FBBF24;
+            border-radius: 14px;
+            color: #292524;
+            padding: 0.9rem 1rem;
+        }
+        .cod-notice .cod-notice-icon { font-size: 24px; color: #92400E; flex-shrink: 0; }
+        .cod-notice .cod-notice-text { min-width: 0; }
+        .cod-notice .cod-notice-title { font-weight: 700; font-size: 0.95rem; line-height: 1.3; }
+        .cod-notice .cod-notice-subtitle { font-weight: 400; font-size: 0.875rem; line-height: 1.4; margin-top: 0.15rem; overflow-wrap: break-word; }
+        /* Arabic: icon physically on the right, text right-aligned and RTL */
+        html.lang-ar .cod-notice { flex-direction: row-reverse; }
+        html.lang-ar .cod-notice .cod-notice-text { text-align: right; }
         @keyframes minOrderPulse {
             0% { transform: scale(1); }
             35% { transform: scale(1.08); }
@@ -213,6 +234,64 @@
     html.lang-ar a[href="checkout2.html"] span,
     html.lang-ar #cart-main-content .sticky a[href="checkout2.html"],
     html.lang-ar #cart-main-content .sticky a[href="checkout2.html"] span { font-size: 24px !important; }
+
+    /* Desktop-only (+768px landscape): product name and CODE/MODEL text 10%
+       larger — 18px (text-lg) -> 19.8px and 10px (text-[10px]) -> 11px.
+       Scoped to the cart card's name link and CODE/MODEL spans; the mobile
+       block (max-width:767px / portrait) overrides the name back to 0.82rem,
+       so mobile and tablet are unchanged. */
+    @media (min-width: 768px) and (orientation: landscape) {
+        #cart-items-container .cart-item h3 { font-size: 19.8px; }
+        #cart-items-container .cart-item .cart-code-label,
+        #cart-items-container .cart-item .cart-item-sku-value { font-size: 11px; }
+    }
+
+    /* ---- Quantity controls: three SEPARATE elements (circle −, bordered
+       input, circle +) in a neutral dark gray on desktop (grayscale on mobile). The old
+       shared bordered box is gone; classes .quantity-btn-minus/plus and
+       .quantity-value are kept so the existing event delegation keeps
+       working (.quantity-value is now an INPUT). Applies at every width. ---- */
+    #cart-items-container .cart-item button.qty-circle-btn {
+        width: 34px; height: 34px; flex: 0 0 auto;
+        border-radius: 9999px; border: 1.5px solid rgba(0, 3, 8, 0.45);
+        background: transparent; color: #44474b;
+        display: inline-flex; align-items: center; justify-content: center;
+        cursor: pointer;
+    }
+    #cart-items-container .cart-item button.qty-circle-btn .material-symbols-outlined { font-size: 18px; }
+    #cart-items-container .cart-item button.qty-circle-btn:hover { background: rgba(0, 3, 8, 0.06); }
+    /* Accessible keyboard focus: neutral ring (no blue) */
+    #cart-items-container .cart-item button.qty-circle-btn:focus-visible { outline: 2px solid rgba(0, 3, 8, 0.45); outline-offset: 2px; }
+    #cart-items-container .cart-item button.qty-circle-btn:focus:not(:focus-visible) { outline: none; }
+    #cart-items-container .cart-item input.qty-input {
+        width: 3rem; height: 34px; flex: 0 0 auto;
+        text-align: center; font-weight: 700; font-size: 0.875rem;
+        color: rgb(0 3 8); background: transparent;
+        border: 1px solid rgba(0, 3, 8, 0.3); border-radius: 6px;
+        padding: 0;
+    }
+    html.dark #cart-items-container .cart-item input.qty-input { color: #e8f1ff; border-color: rgba(255, 255, 255, 0.35); }
+    #cart-items-container .cart-item input.qty-input:focus { outline: none; border-color: #135bec; }
+
+    /* Uniform cards: the product name wraps to at most 2 lines on every
+       layout, so card height no longer depends on name length. */
+    #cart-items-container .cart-item h3 {
+        display: -webkit-box; -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2; overflow: hidden;
+    }
+
+    /* Product images: show the ENTIRE product (no crop) — same approach as
+       houseware-kitchenware.html: object-fit: contain, centered, unused
+       container space filled white. */
+    #cart-items-container div.cart-item > div:first-child { background: #ffffff !important; }
+    #cart-items-container .cart-item > div:first-child img {
+        width: 100% !important; height: 100% !important;
+        object-fit: contain !important; mix-blend-mode: normal !important;
+    }
+
+    /* Remove: red icon (slightly larger) + red label */
+    #cart-items-container .cart-item .remove-btn { color: rgb(186 26 26) !important; }
+    #cart-items-container .cart-item .remove-btn .material-symbols-outlined { font-size: 20px !important; }
 </style>
 <style>
 /* ==================== MOBILE CART UX (≤767px) ====================
@@ -238,9 +317,11 @@
     #cart-items-container { padding: 0 1rem !important; gap: 0.75rem !important; }
 
     /* ---- CART CARD (mobile) ---- */
-    #cart-items-container .cart-item {
+    #cart-items-container div.cart-item {
         background: #ffffff !important; border-radius: 0.625rem !important;
-        padding: 0.75rem !important; gap: 0.75rem !important;
+        padding: 0.9rem 1rem 1.4rem 0.9rem !important; gap: 0.75rem !important;
+        /* uniform height: matches the 2-line-name card; 1-line names fill via justify-between */
+        min-height: 158px !important;
         box-shadow: 0 2px 12px rgba(0,3,8,0.05);
         display: flex !important; flex-direction: row !important; align-items: stretch !important;
     }
@@ -248,11 +329,12 @@
     /* Larger image — uniform square, rounded */
     #cart-items-container .cart-item > div:first-child {
         width: 92px !important; height: 92px !important; flex-shrink: 0 !important;
-        border-radius: 0.5rem !important; overflow: hidden !important; background: #edf4ff !important;
+        border-radius: 0.5rem !important; overflow: hidden !important; background: #ffffff !important;
     }
-    html.dark #cart-items-container .cart-item > div:first-child { background: #1a1f2e !important; }
+    html.dark #cart-items-container .cart-item > div:first-child { background: #ffffff !important; }
     #cart-items-container .cart-item > div:first-child img {
-        width: 100% !important; height: 100% !important; object-fit: cover !important;
+        width: 100% !important; height: 100% !important;
+        object-fit: contain !important; mix-blend-mode: normal !important;
     }
     /* Info column: fills card, flex column */
     #cart-items-container .cart-item > div:nth-child(2) {
@@ -287,12 +369,47 @@
 
     /* Bottom action row: quantity (left) + icon buttons (right) */
     #cart-items-container .cart-item > div:nth-child(2) > div:last-child {
-        margin-top: auto !important; padding-top: 0.4rem !important;
+        margin-top: 1.9rem !important; padding-top: 0.4rem !important;
     }
     /* Quantity selector — compact */
     #cart-items-container .cart-item .quantity-btn-minus,
-    #cart-items-container .cart-item .quantity-btn-plus { padding: 0.4rem 0.6rem !important; }
-    #cart-items-container .cart-item .quantity-value { font-size: 0.78rem !important; padding: 0 0.6rem !important; }
+    #cart-items-container .cart-item .quantity-btn-plus { padding: 0 !important; }
+    /* 16px minimum: iOS Safari auto-zooms any focused input smaller than 16px.
+       Same visual design, only the font size differs from desktop. */
+    #cart-items-container .cart-item .quantity-value { font-size: 16px !important; padding: 0 !important; }
+
+    /* ---- Mobile quantity controls: approved GRAYSCALE reference design.
+       Overrides the desktop blue accent (scoped to this mobile block, so
+       desktop keeps its blue circles and bordered input). ---- */
+    #cart-items-container .cart-item button.qty-circle-btn {
+        border-color: rgba(0, 3, 8, 0.45) !important;   /* thin dark-gray outline */
+        color: #44474b !important;                       /* dark-gray symbol */
+        background: #ffffff !important;
+    }
+    #cart-items-container .cart-item button.qty-circle-btn:hover { background: #f2f3f5 !important; }
+    #cart-items-container .cart-item input.qty-input {
+        background: #ffffff !important;                  /* white field */
+        border-color: rgba(0, 3, 8, 0.18) !important;    /* light-gray border */
+        color: rgb(0 3 8) !important;
+    }
+    html.dark #cart-items-container .cart-item button.qty-circle-btn {
+        border-color: rgba(255, 255, 255, 0.45) !important;
+        color: #e8f1ff !important;
+        background: transparent !important;
+    }
+    html.dark #cart-items-container .cart-item input.qty-input {
+        background: transparent !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+        color: #e8f1ff !important;
+    }
+    /* Controls sit slightly lower: clear vertical gap below the name /
+       CODE-MODEL block before the quantity row. */
+
+    /* No double-tap zoom inside mobile product cards: touch-action:
+       manipulation allows panning and pinch-to-zoom but disables the
+       double-tap-to-zoom gesture, so rapid +/− taps never zoom the page.
+       Scoped to the card only — the rest of the page is untouched. */
+    #cart-items-container .cart-item { touch-action: manipulation; }
 
     /* Icon-only Remove + Wishlist buttons (replace text links).
        Hide the text label; keep only the icon. */
@@ -305,7 +422,7 @@
     }
     html.dark #cart-items-container .cart-item .remove-btn,
     html.dark #cart-items-container .cart-item .wishlist-btn { background: rgba(255,255,255,0.08) !important; }
-    #cart-items-container .cart-item .remove-btn .material-symbols-outlined,
+    #cart-items-container .cart-item .remove-btn .material-symbols-outlined { font-size: 20px !important; } /* red + slightly larger (matches desktop) */
     #cart-items-container .cart-item .wishlist-btn .material-symbols-outlined { font-size: 18px !important; }
     /* Icon-only on mobile: hide the text label */
     #cart-items-container .cart-item .cart-action-label { display: none !important; }
@@ -313,8 +430,14 @@
     /* ---- ORDER SUMMARY (mobile): premium, full-width card ---- */
     /* Reuses the existing data + calculations (no JS change). */
     #cart-main-content .lg\:w-\[30\%\] { width: 100% !important; }
+    /* .sticky is now a WRAPPER (summary card + delivery notice travel
+       together on desktop). On mobile the wrapper is neutral and the card
+       styling moves to the inner summary card — identical look to before. */
     #cart-main-content .sticky {
-        position: static !important; padding: 1.25rem !important;
+        position: static !important;
+    }
+    #cart-main-content .sticky > div:first-child {
+        padding: 1.25rem !important;
         border-radius: 0.75rem !important; margin: 1rem 1rem 0 !important;
         box-shadow: 0 4px 24px rgba(0,3,8,0.06) !important;
         border: 1px solid rgba(196,198,204,0.4) !important;
@@ -1407,7 +1530,7 @@ setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.st
 <!-- ===== Main Content (cart design) ===== -->
 <main id="cart-main" class="pt-32 pb-20 px-6 max-w-[1440px] mx-auto min-h-screen">
 <div id="cart-main-content" style="display:none;">
-<div class="flex flex-col lg:flex-row gap-12">
+<div class="flex flex-col lg:flex-row gap-12" id="cart-items-layout">
 <div class="lg:w-[70%]">
 <div class="flex justify-between items-baseline mb-8">
 <h1 class="font-headline text-4xl font-extrabold tracking-tight text-primary dark:text-white">Shopping Cart</h1>
@@ -1418,7 +1541,11 @@ setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.st
 <div class="space-y-6" id="cart-items-container"></div>
 </div>
 <div class="lg:w-[30%]">
-<div class="sticky top-28 bg-surface-container-high dark:bg-surface-container border border-outline-variant/30 text-on-surface dark:text-white p-8 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.03)]">
+<!-- Sticky WRAPPER contains both the summary card and the delivery notice, so
+     the notice can never slide behind the stuck summary while scrolling —
+     they travel together. The card keeps its own visual classes. -->
+<div class="sticky top-28">
+<div class="bg-surface-container-high dark:bg-surface-container border border-outline-variant/30 text-on-surface dark:text-white p-8 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.03)]">
 <h2 class="font-headline text-xl font-bold text-primary dark:text-white mb-6 pb-4 border-b-2 border-outline-variant/60">Order Summary</h2>
 <!-- Box 1: Subtotal + Shipping (joined card) -->
 <div class="bg-surface dark:bg-surface-container-low border border-outline-variant/30 rounded-xl shadow-md px-5 py-5">
@@ -1436,11 +1563,20 @@ setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.st
 <span class="font-headline text-sm font-black uppercase tracking-widest text-on-surface-variant dark:text-white/70">TOTAL KD</span>
 <span class="font-headline text-3xl md:text-4xl font-black text-primary dark:text-white" id="summary-total">2.500</span>
 </div>
+<!-- Cash on Delivery notice: informational only, between the Total card and the Continue button -->
+<div role="note" class="cod-notice">
+  <span class="material-symbols-outlined cod-notice-icon" aria-hidden="true">payments</span>
+  <div class="cod-notice-text">
+    <p class="cod-notice-title">Cash on Delivery</p>
+    <p class="cod-notice-subtitle">You will pay when your order is delivered.</p>
+  </div>
+</div>
 <div class="space-y-4 mt-6"><a href="checkout2.html" style="border-radius:9999px" class="block text-center w-full bg-primary text-on-primary py-5 font-headline text-xs font-black uppercase tracking-[0.2em] hover:bg-secondary transition-all">Continue with Your Order</a></div>
 <!-- Minimum-order info: inside the summary container, beneath the Continue button -->
 <p class="min-order-info text-center font-body text-sm text-gray-600 dark:text-gray-300 mt-4">We only accept orders above 5 KD.</p>
 </div>
-<!-- Delivery notice: pill centered beneath the summary card -->
+<!-- Delivery notice: pill centered beneath the summary card (inside the
+     sticky wrapper, so it stays directly below the summary while scrolling) -->
 <div role="note" aria-label="Your order will be delivered within the next 2 days." class="delivery-notice">
     <span class="material-symbols-outlined" aria-hidden="true">local_shipping</span>
     <span class="delivery-notice-text">Your order will be delivered within the next 2 days.</span>
@@ -1511,7 +1647,9 @@ setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.st
         '<p class="font-headline font-black text-secondary">KD ' + price.toFixed(3) + '</p>' +
         '</div>';
     }).join('');
-    document.getElementById('yml-section').style.display = '';
+    // Only reveal when the cart actually has items — updateCart() hides this
+    // section for the empty state, and the catalog can load after that.
+    if (document.querySelector('.cart-item')) document.getElementById('yml-section').style.display = '';
     document.dispatchEvent(new Event('yml:rendered'));
   }
   document.addEventListener('nassim:catalog-loaded', renderYml);
@@ -1554,6 +1692,7 @@ setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.st
         const summaryShipping = document.getElementById('summary-shipping');
         const summaryTotal = document.getElementById('summary-total');
         const mainContent = document.getElementById('cart-main-content');
+        const itemsLayout = document.getElementById('cart-items-layout');
         const emptyMessage = document.getElementById('empty-cart-message');
         /* Shipping rule for DISPLAY ONLY (the server recomputes the real fee
            from DB prices at order creation). Required rule: subtotal below
@@ -1598,7 +1737,14 @@ setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.st
               // the initial state and the post-click state are indistinguishable.
               var heartStyle = inWish ? ' style="font-variation-settings: \'FILL\' 1; color: #ba1a1a;"' : '';
               var wishBtnClass = inWish ? ' text-error' : '';
-              return '<div class="cart-item bg-surface-container-lowest dark:bg-surface-container p-6 rounded-xl flex flex-col md:flex-row gap-6 group transition-all duration-300 hover:shadow-[0_20px_50px_rgba(0,3,8,0.04)]" data-price="' + item.price + '" data-id="' + escHtml(item.id) + '"><div class="w-full md:w-40 h-40 bg-surface-container dark:bg-surface-container-high rounded-lg overflow-hidden shrink-0"><img loading="lazy" alt="' + escHtml(item.name) + '" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="' + escHtml(item.image||'') + '"/></div><div class="flex-grow flex flex-col justify-between"><div class="flex justify-between items-start"><div><span class="font-label text-[10px] uppercase tracking-widest text-secondary font-bold mb-1 block">' + escHtml(item.line||'') + '</span><h3' + itemDirAttr + ' class="font-headline text-lg font-bold text-primary dark:text-white mb-1">' + escHtml(itemDisplayName) + '</h3><p class="font-label text-[10px] text-on-surface-variant dark:text-white/70"><span class="cart-code-label">CODE/MODEL:</span> <span class="cart-item-sku-value">' + escHtml(item.sku||'') + '</span></p></div><div class="text-right"><p class="item-total-price font-headline text-lg font-bold text-primary dark:text-white">KD ' + (item.price * item.quantity).toFixed(3) + '</p><p class="font-label text-[10px] text-on-surface-variant dark:text-white/70 uppercase tracking-wider">Unit: KD ' + item.price.toFixed(3) + '</p></div></div><div class="flex flex-wrap items-center justify-between gap-4 mt-6"><div class="flex items-center border border-outline-variant dark:border-outline-variant/50 rounded-sm overflow-hidden"><button class="quantity-btn-minus px-3 py-1.5 hover:bg-surface-container dark:hover:bg-surface-container-high transition-colors text-primary dark:text-white"><span class="material-symbols-outlined text-sm">remove</span></button><span class="quantity-value px-4 font-headline font-bold text-sm text-primary dark:text-white">' + item.quantity + '</span><button class="quantity-btn-plus px-3 py-1.5 hover:bg-surface-container dark:hover:bg-surface-container-high transition-colors text-primary dark:text-white"><span class="material-symbols-outlined text-sm">add</span></button></div><div class="flex gap-4 text-[10px] font-black uppercase tracking-widest"><button class="remove-btn flex items-center gap-1.5 text-on-surface-variant dark:text-white/70 hover:text-error transition-colors"><span class="material-symbols-outlined text-sm">delete</span><span class="cart-action-label"> Remove</span></button><button class="wishlist-btn flex items-center gap-1.5 text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors' + wishBtnClass + '"><span class="material-symbols-outlined text-sm"' + heartStyle + '>favorite</span><span class="cart-action-label"> Wishlist</span></button></div></div></div></div>';
+              /* Navigation happens ONLY from the image and the name links.
+                 data-product-wired on the card opts it out of product-nav.js's
+                 whole-card click navigation (its SKIP_SELECTOR skips the
+                 card), so empty space, price, CODE/MODEL and the qty/remove
+                 controls never navigate. The image and name are real anchors
+                 using the item's own slug — the same id every other cart
+                 feature (checkout, wishlist, server sync) already uses. */
+              return '<div class="cart-item bg-surface-container-lowest dark:bg-surface-container p-6 rounded-xl flex flex-col md:flex-row gap-6 group transition-all duration-300 hover:shadow-[0_20px_50px_rgba(0,3,8,0.04)]" data-product-wired="1" data-price="' + item.price + '" data-id="' + escHtml(item.id) + '"><div class="w-full md:w-40 h-40 bg-surface-container dark:bg-surface-container-high rounded-lg overflow-hidden shrink-0"><a href="product-view.html?id=' + encodeURIComponent(item.id) + '" class="block w-full h-full"><img loading="lazy" alt="' + escHtml(item.name) + '" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="' + escHtml(item.image||'') + '"/></a></div><div class="flex-grow flex flex-col justify-between"><div class="flex justify-between items-start"><div><span class="font-label text-[10px] uppercase tracking-widest text-secondary font-bold mb-1 block">' + escHtml(item.line||'') + '</span><a href="product-view.html?id=' + encodeURIComponent(item.id) + '" class="block"><h3' + itemDirAttr + ' class="font-headline text-lg font-bold text-primary dark:text-white mb-1 underline" style="text-decoration-thickness:1px;text-underline-offset:3px;">' + escHtml(itemDisplayName) + '</h3></a><p class="font-label text-[10px] text-on-surface-variant dark:text-white/70"><span class="cart-code-label">CODE/MODEL:</span> <span class="cart-item-sku-value">' + escHtml(item.sku||'') + '</span></p></div><div class="text-right"><p class="item-total-price font-headline text-lg font-bold text-primary dark:text-white">KD ' + (item.price * item.quantity).toFixed(3) + '</p><p class="font-label text-[10px] text-on-surface-variant dark:text-white/70 uppercase tracking-wider">Unit: KD ' + item.price.toFixed(3) + '</p></div></div><div class="cart-qty-row flex flex-wrap items-center justify-between gap-4 mt-6"><div class="flex items-center gap-3"><button aria-label="Decrease quantity" class="quantity-btn-minus qty-circle-btn"><span class="material-symbols-outlined">remove</span></button><input type="text" inputmode="numeric" pattern="\d*" autocomplete="off" aria-label="Quantity" maxlength="2" class="quantity-value qty-input" value="' + item.quantity + '"/><button aria-label="Increase quantity" class="quantity-btn-plus qty-circle-btn"><span class="material-symbols-outlined">add</span></button></div><div class="flex gap-4 text-[10px] font-black uppercase tracking-widest"><button class="remove-btn flex items-center gap-1.5 text-error transition-colors"><span class="material-symbols-outlined">delete</span><span class="cart-action-label"> Remove</span></button><button class="wishlist-btn flex items-center gap-1.5 text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors' + wishBtnClass + '"><span class="material-symbols-outlined text-sm"' + heartStyle + '>favorite</span><span class="cart-action-label"> Wishlist</span></button></div></div></div></div>';
             }).join('');
           }
         }
@@ -1698,11 +1844,14 @@ setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.st
             const items = document.querySelectorAll('.cart-item');
             let totalQty = 0, subtotal = 0;
             if (!items.length) {
-                // Empty cart: hide main content + summary, show empty message
-                if (mainContent) mainContent.style.display = 'none';
+                // Empty cart: keep the content container visible (the empty
+                // message lives INSIDE it) and hide only the items+summary
+                // layout row, then show the empty message.
+                if (mainContent) mainContent.style.display = '';
+                if (itemsLayout) itemsLayout.style.display = 'none';
                 if (emptyMessage) { emptyMessage.style.display = 'flex'; }
                 // Also hide the "You May Also Like" section when cart is empty
-                var mayAlsoLike = document.querySelector('main > section.mt-32');
+                var mayAlsoLike = document.getElementById('yml-section');
                 if (mayAlsoLike) mayAlsoLike.style.display = 'none';
                 if (headerCount) headerCount.textContent = '00';
                 if (window.NassimCartBadge) window.NassimCartBadge.update();
@@ -1710,13 +1859,14 @@ setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.st
             }
             // Has items: show main content + summary, hide empty message
             if (mainContent) mainContent.style.display = '';
+            if (itemsLayout) itemsLayout.style.display = '';
             if (emptyMessage) { emptyMessage.style.display = 'none'; }
-            var mayAlsoLike = document.querySelector('main > section.mt-32');
+            var mayAlsoLike = document.getElementById('yml-section');
             if (mayAlsoLike) mayAlsoLike.style.display = '';
             items.forEach(item => {
                 const qtyElement = item.querySelector('.quantity-value');
                 const pricePerUnit = parseFloat(item.dataset.price);
-                const currentQty = parseInt(qtyElement.textContent);
+                const currentQty = parseInt(qtyElement.tagName === 'INPUT' ? qtyElement.value : qtyElement.textContent, 10) || 1;
                 totalQty += currentQty;
                 const itemTotal = currentQty * pricePerUnit;
                 subtotal += itemTotal;
@@ -1752,13 +1902,18 @@ setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.st
         window.addEventListener('nassim-langchange', () => setTimeout(updateCart, 150));
 
         if (cartItemsContainer) {
+            /* .quantity-value is an INPUT: read/write .value (span fallback kept
+               for safety). Helper used by the click handler, updateCart and
+               syncCartToStorage so all three stay in sync. */
+            function qtyRead(el) { return el.tagName === 'INPUT' ? el.value : el.textContent; }
+            function qtyWrite(el, v) { if (el.tagName === 'INPUT') { el.value = v; } else { el.textContent = v; } }
             cartItemsContainer.addEventListener('click', (e) => {
                 const item = e.target.closest('.cart-item');
                 if (!item) return;
                 const qtyElement = item.querySelector('.quantity-value');
-                let qty = parseInt(qtyElement.textContent);
-                if (e.target.closest('.quantity-btn-plus')) { qty++; qtyElement.textContent = qty; syncCartToStorage(); updateCart(); syncQtyToServer(item.dataset.id || '', qty); }
-                else if (e.target.closest('.quantity-btn-minus')) { if (qty > 1) { qty--; qtyElement.textContent = qty; syncCartToStorage(); updateCart(); syncQtyToServer(item.dataset.id || '', qty); } }
+                let qty = parseInt(qtyRead(qtyElement), 10) || 1;
+                if (e.target.closest('.quantity-btn-plus')) { if (qty < 99) { qty++; qtyWrite(qtyElement, qty); syncCartToStorage(); updateCart(); syncQtyToServer(item.dataset.id || '', qty); } } /* max 99 */
+                else if (e.target.closest('.quantity-btn-minus')) { if (qty > 1) { qty--; qtyWrite(qtyElement, qty); syncCartToStorage(); updateCart(); syncQtyToServer(item.dataset.id || '', qty); } }
                 else if (e.target.closest('.remove-btn')) {
                     var itemId = item.dataset.id || '';
                     // Sync removal to server only if logged in
@@ -1776,7 +1931,7 @@ setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.st
                     const itemName = (item.querySelector('h3') || {}).textContent || '';
                     const itemImg = (item.querySelector('img') || {}).src || '';
                     const itemPrice = parseFloat(item.dataset.price) || 0;
-                    const itemQty = parseInt((item.querySelector('.quantity-value') || {}).textContent || '1');
+                    const _wq = item.querySelector('.quantity-value'); const itemQty = parseInt(_wq ? (_wq.tagName === 'INPUT' ? _wq.value : _wq.textContent) : '1', 10) || 1;
                     const itemLine = (item.querySelector('.text-secondary') || {}).textContent || '';
                     const itemSku = (item.querySelector('.cart-item-sku-value') || {}).textContent || '';
                     const isUserLoggedIn = window.NassimAccount && window.NassimAccount.getCurrentUser && window.NassimAccount.getCurrentUser();
@@ -1816,6 +1971,34 @@ setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.st
                     }
                 }
             });
+
+            /* Direct quantity editing: the field is a text input with
+               inputmode="numeric". Digits-only while typing (empty allowed
+               mid-edit); on blur/Enter the value is validated — valid >= 1
+               commits (recalculating prices + persisting), anything invalid
+               or zero restores the previous valid quantity. Mirrors the same
+               sync path the +/− buttons use. */
+            cartItemsContainer.addEventListener('input', (e) => {
+                if (!e.target.classList || !e.target.classList.contains('quantity-value')) return;
+                const clean = e.target.value.replace(/\D/g, '').slice(0, 2); /* max 99 */
+                if (clean !== e.target.value) e.target.value = clean;
+            });
+            cartItemsContainer.addEventListener('focusin', (e) => {
+                if (!e.target.classList || !e.target.classList.contains('quantity-value')) return;
+                e.target.dataset.prev = e.target.value;
+            });
+            cartItemsContainer.addEventListener('focusout', (e) => {
+                if (!e.target.classList || !e.target.classList.contains('quantity-value')) return;
+                const item = e.target.closest('.cart-item');
+                let qty = parseInt(e.target.value, 10);
+                if (isNaN(qty) || qty < 1) qty = Math.min(parseInt(e.target.dataset.prev, 10) || 1, 99); else if (qty > 99) qty = 99; /* max 99 */
+                e.target.value = qty;
+                delete e.target.dataset.prev;
+                if (item) { syncCartToStorage(); updateCart(); syncQtyToServer(item.dataset.id || '', qty); }
+            });
+            cartItemsContainer.addEventListener('keydown', (e) => {
+                if (e.target.classList && e.target.classList.contains('quantity-value') && e.key === 'Enter') e.target.blur();
+            });
         }
 
         // Sync DOM cart state back to localStorage
@@ -1827,7 +2010,7 @@ setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.st
                 var name = item.querySelector('h3')?.textContent || '';
                 var img = item.querySelector('img')?.src || '';
                 var price = parseFloat(item.dataset.price) || 0;
-                var qty = parseInt(item.querySelector('.quantity-value')?.textContent || '1');
+                var _qe = item.querySelector('.quantity-value'); var qty = parseInt(_qe ? (_qe.tagName === 'INPUT' ? _qe.value : _qe.textContent) : '1', 10) || 1;
                 var line = item.querySelector('.text-secondary')?.textContent || '';
                 var sku = item.querySelector('.cart-item-sku-value')?.textContent || '';
                 cartData.push({ id: id, name: name, image: img, price: price, currency: 'KD', line: line, sku: sku, quantity: qty });
@@ -1947,7 +2130,9 @@ setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.st
 (function () {
   function ready(fn){ if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn); else fn(); }
   ready(function () {
-    var section = document.querySelector('main > section.mt-32');
+    /* The section may be wrapped in a generic div (not a direct child of
+       main), so match by its id first. */
+    var section = document.getElementById('yml-section') || document.querySelector('main > section.mt-32');
     if (!section) return;
     var track = section.querySelector('[data-yml-carousel]');
     if (!track) return;
@@ -1960,11 +2145,27 @@ setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.st
     }
 
     // ---- Prev / Next buttons (desktop + tablet) ----
+    // The track uses scroll-snap-type: x mandatory, so scrolling by an
+    // arbitrary step lands BETWEEN snap points and Chromium snaps straight
+    // back (the arrows appeared dead). Instead, scroll exactly onto the
+    // next/previous card's snap position.
     var btns = section.querySelectorAll('.flex.justify-between > .flex button');
     btns.forEach(function (btn, idx) {
       btn.addEventListener('click', function () {
         var dir = (idx === 0) ? -1 : 1;   // first button = west (prev), second = east (next)
-        track.scrollBy({ left: dir * cardStep(), behavior: 'smooth' });
+        var cards = track.querySelectorAll('.product-card');
+        if (!cards.length) return;
+        var trackLeft = track.getBoundingClientRect().left;
+        var lefts = [];
+        cards.forEach(function (c) { lefts.push(c.getBoundingClientRect().left - trackLeft + track.scrollLeft); });
+        var target = null, i;
+        if (dir === 1) {
+          for (i = 0; i < lefts.length; i++) { if (lefts[i] > track.scrollLeft + 8) { target = lefts[i]; break; } }
+        } else {
+          for (i = 0; i < lefts.length; i++) { if (lefts[i] < track.scrollLeft - 8) target = lefts[i]; }
+        }
+        if (target == null) return; // already at the end in that direction
+        track.scrollTo({ left: target, behavior: 'smooth' });
       });
     });
 
@@ -2125,7 +2326,7 @@ setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.st
     })();
 </script>
 <script src="assets/js/theme.js" defer></script>
-<script src="assets/js/dark-overrides.js?v=20261030" defer></script>
+<script src="assets/js/dark-overrides.js?v=20261030b" defer></script>
 <script src="assets/js/cart-nav.js" defer></script>
 <script src="assets/js/product-nav.js" defer></script>
 <script src="assets/js/listing-pagination.js?v=4" defer></script>

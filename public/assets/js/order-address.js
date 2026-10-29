@@ -175,6 +175,25 @@
     },
     /* True when the order carries structured (labeled) address fields —
        callers use this to hide the static "Address :" prefix. */
-    isStructured: function (order) { return !!parse((order || {}).address); }
+    isStructured: function (order) { return !!parse((order || {}).address); },
+
+    /* Display formatting ONLY for a stored E.164 customerPhone
+       ("+96555123456" → "+965 55123456"): inserts ONE space between the
+       country calling code and the national number so staff can read the
+       two apart. The boundary comes from the real calling-code lengths
+       (1-digit: 1, 7; 2-digit set below; everything else 3-digit) — never a
+       fixed digit count. The stored value and API payloads are untouched;
+       anything that is not a "+<digits>" number (legacy entries) comes back
+       exactly as stored. */
+    formatPhone: function (phone) {
+      var v = String(phone == null ? '' : phone).trim();
+      var m = /^\+(\d{6,15})$/.exec(v.replace(/[\s()-]/g, ''));
+      if (!m) return v;
+      var d = m[1];
+      var DIAL2 = {};
+      "20 27 30 31 32 33 34 36 39 40 41 43 44 45 46 47 48 49 51 52 53 54 55 56 57 58 60 61 62 63 64 65 66 81 82 84 86 90 91 92 93 94 95 98".split(' ').forEach(function (c) { DIAL2[c] = 1; });
+      var dialLen = (d[0] === '1' || d[0] === '7') ? 1 : (DIAL2[d.slice(0, 2)] ? 2 : 3);
+      return '+' + d.slice(0, dialLen) + ' ' + d.slice(dialLen);
+    }
   };
 })();

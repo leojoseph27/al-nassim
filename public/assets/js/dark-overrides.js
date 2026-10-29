@@ -16,7 +16,7 @@
   if (existing) return;
   var link = document.createElement("link");
   link.rel = "stylesheet";
-  link.href = "assets/css/dark-overrides.css";
+  link.href = "assets/css/dark-overrides.css?v=20261031"; /* versioned: auto-injected copies must never be stale */
   document.head.appendChild(link);
 })();
 

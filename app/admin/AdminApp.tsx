@@ -85,6 +85,23 @@ interface AdminOrder {
   }[];
 }
 
+/* Display-only formatting for a stored E.164 customerPhone: one space after
+   the country calling code ("+96555123456" -> "+965 55123456") so staff can
+   read the code and the number apart. The boundary follows the real calling
+   code lengths (1-digit: 1, 7; the 2-digit set below; anything else 3-digit),
+   never a fixed digit count. Non-E.164 / legacy values come back untouched;
+   the stored data and payloads are unchanged. */
+const DIAL2 = new Set(
+  "20 27 30 31 32 33 34 36 39 40 41 43 44 45 46 47 48 49 51 52 53 54 55 56 57 58 60 61 62 63 64 65 66 81 82 84 86 90 91 92 93 94 95 98".split(" ")
+);
+function formatPhoneDisplay(phone: string): string {
+  const m = /^\+(\d{6,15})$/.exec(String(phone ?? "").replace(/[\s()-]/g, ""));
+  if (!m) return String(phone ?? "");
+  const d = m[1];
+  const dialLen = d[0] === "1" || d[0] === "7" ? 1 : DIAL2.has(d.slice(0, 2)) ? 2 : 3;
+  return "+" + d.slice(0, dialLen) + " " + d.slice(dialLen);
+}
+
 /* ------------------------------------------------------------------ */
 /* Constants                                                           */
 /* ------------------------------------------------------------------ */
@@ -773,7 +790,8 @@ function OrderCard({ order, expanded, busy, onToggle, onVerify, onSendConfirmati
           {/* Left column: customer info + workflow actions */}
           <div className="space-y-2">
             <p><span className="text-gray-500">Email:</span> {order.customerEmail}</p>
-            <p><span className="text-gray-500">Phone:</span> {order.customerPhone}</p>
+            {/* Display-only spacing after the calling code; the stored value is unchanged. */}
+            <p><span className="text-gray-500">Phone:</span> {formatPhoneDisplay(order.customerPhone)}</p>
             <p><span className="text-gray-500">Address:</span> {order.address}, {order.city}</p>
             {order.notes && <p><span className="text-gray-500">Customer Notes:</span> {order.notes}</p>}
             {order.staffNotes && <p><span className="text-gray-500">Staff Notes:</span> {order.staffNotes}</p>}

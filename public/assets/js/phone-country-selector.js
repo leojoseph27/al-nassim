@@ -66,6 +66,8 @@
           '<span class="text-on-surface-variant dark:text-white/60">+' + c.dial + '</span>';
         row.addEventListener('click', function () {
           input.dataset.dial = c.dial;
+          input.dataset.iso = c.iso;
+          input.dataset.cname = c.name;
           input.maxLength = c.dial === '965' ? 8 : 12;
           document.getElementById('cc-flag').textContent = flag(c.iso);
           document.getElementById('cc-code').textContent = '+' + c.dial;

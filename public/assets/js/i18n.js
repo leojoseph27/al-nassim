@@ -415,6 +415,21 @@
     return ar + ': ' + m[1];
   }
 
+  /* ORDER-SHEET CODE/MODEL PATTERN: item rows render the label and the live
+     code as one composed text node ("Code/MODEL : ND-1197"), which can never
+     exact-match the approved "code/model:" key. Compose from the approved
+     mapping ("code/model:" -> "الكود/الموديل") + the live code, following the
+     same pattern as quantityAr above. The embedded Latin code keeps its LTR
+     run inside the RTL-marked node. */
+  var CODE_MODEL_RE = /^code\/model\s*:\s*(\S.*)$/i;
+  function codeModelAr(v) {
+    var m = CODE_MODEL_RE.exec(String(v).replace(/\s+/g, ' ').trim());
+    if (!m) return null;
+    var ar = lookup['code/model:'];
+    if (ar == null) return null;
+    return ar + ': ' + m[1];
+  }
+
   function translateTextNode(node) {
     if (node.nodeType !== 3) return;
     var v = node.nodeValue;
@@ -431,6 +446,7 @@
     if (ar == null) ar = productsCountAr(v); // composed "N products" count label
     if (ar == null) ar = itemsCountAr(v); // composed "number of items: N" listing count
     if (ar == null) ar = quantityAr(v); // composed "Quantity: N" order-sheet label
+    if (ar == null) ar = codeModelAr(v); // composed "Code/MODEL : X" order-sheet label
     /* TRAILING-COLON FALLBACK: sidebar headings render as "FILTER BY :" while
        the approved key is "filter by". On an exact miss, retry the text
        without its trailing " :" and append the colon to the approved Arabic

@@ -49,9 +49,9 @@
 <link rel="stylesheet" href="assets/css/rtl-overrides.css?v=6"/>
 <script src="assets/js/i18n-data.js?v=5" defer></script>
 <script src="assets/js/product-name.js?v=1"></script>
-<script src="assets/js/i18n.js?v=2" defer></script>
+<script src="assets/js/i18n.js?v=3" defer></script>
 <script src="assets/js/nassim-locations-data.js" defer></script>
-<script src="assets/js/order-address.js" defer></script>
+<script src="assets/js/order-address.js?v=2" defer></script>
 
 <style>
         .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
@@ -1866,7 +1866,12 @@ html.dark #home5-burger-btn { color: #ffffff; }
             if (m) return m[1];
             var parts = String(name || '').split('-');
             var tail = parts[parts.length - 1];
-            return /[A-Za-z]-?\d/.test(tail) ? tail.trim() : '\u2014';
+            return /[A-Za-z]-?\d/.test(tail) ? tail.trim() : '';
+        }
+        /* Derive a code from the item slug when the name has none (e.g. "28-815-al-nassim-nd-1197" -> "ND-1197"). */
+        function slugCode(slug) {
+            var m = String(slug || '').match(/([a-z]{1,6})-(\d+)\s*$/i);
+            return m ? (m[1] + '-' + m[2]).toUpperCase() : '';
         }
         function render(o) {
             document.getElementById('os-number').innerHTML = ltr(esc(o.orderNumber));
@@ -1885,7 +1890,7 @@ html.dark #home5-burger-btn { color: #ffffff; }
                     '<div class="os-info">' +
                     '<h3 class="os-pname">' + esc(i.name) + '</h3>' +
                     '<p class="os-piece">KD ' + fmt(i.price) + '/<span>piece</span></p>' +
-                    '<p class="os-pcode">Code/MODEL : ' + ltr(esc(itemCode(i.name))) + '</p>' +
+                    '<p class="os-pcode" data-slug="' + esc(i.slug || '') + '">Code/MODEL : ' + ltr(esc(itemCode(i.name) || slugCode(i.slug) || '\u2014')) + '</p>' +
                     '<p class="os-meta-qty">Quantity: ' + i.quantity + '</p>' +
                     '</div>' +
                     '<div class="os-meta">' +
@@ -1899,7 +1904,7 @@ html.dark #home5-burger-btn { color: #ffffff; }
             document.getElementById('os-total').textContent = 'KWD ' + total;
             document.getElementById('os-shipping').textContent = 'KWD ' + shipping;
             document.getElementById('os-name').textContent = o.customerName || '';
-            document.getElementById('os-phone').innerHTML = ltr(esc(o.customerPhone || ''));
+            document.getElementById('os-phone').innerHTML = ltr(esc(window.NassimOrderAddress ? window.NassimOrderAddress.formatPhone(o.customerPhone) : (o.customerPhone || '')));
             // Delivery address — rendered by the SHARED renderer
             // (assets/js/order-address.js): the stored Governorate/Area/
             // Block/… values from checkout appear as labeled rows at the
@@ -2044,7 +2049,7 @@ html.dark #home5-burger-btn { color: #ffffff; }
     })();
 </script>
 <script src="assets/js/theme.js" defer></script>
-<script src="assets/js/dark-overrides.js?v=20261030" defer></script>
+<script src="assets/js/dark-overrides.js?v=20261030b" defer></script>
 <script src="assets/js/cart-nav.js" defer></script>
 <script src="assets/js/product-nav.js" defer></script>
 <script src="assets/js/listing-pagination.js?v=4" defer></script>
@@ -2640,5 +2645,31 @@ html.lang-ar #mobile-bottom-nav .font-headline { letter-spacing: normal; line-he
 html.lang-ar #os-wrap .os-btn { font-size: 16.5px; }
 </style>
 <script src="assets/js/mbnav-categories.js?v=2"></script>
+<script src="/api/catalog" defer id="nassim-catalog-script" onload="document.dispatchEvent(new Event('nassim:catalog-loaded'))" onerror="document.dispatchEvent(new Event('nassim:catalog-loaded'))"></script>
+<script>
+/* 2026-10-25: CODE/MODEL = the product's real SKU. Item rows render the
+   name-derived code as a fallback; once the catalog arrives, each row's
+   data-slug resolves the product and the SKU replaces the fallback. Re-applied
+   for a short window so language re-renders keep the real SKU. */
+(function () {
+  function updateCodes() {
+    var map = {};
+    (window.NASSIM_PRODUCTS || []).forEach(function (p) { if (p && p.id) map[p.id] = p; if (p && p.slug) map[p.slug] = p; });
+    if (!Object.keys(map).length) return;
+    document.querySelectorAll(".os-pcode[data-slug]").forEach(function (el) {
+      function slugCode(slug) { var codes = String(slug || "").match(/([a-z]{1,6})-(\d+)/gi) || []; return codes.length ? codes[codes.length - 1].toUpperCase() : ""; }
+      var p = map[el.getAttribute("data-slug")];
+      /* Skip when the correct code is already shown (EN label or the AR
+         translated one) — rewriting would flash English over Arabic. */
+      if (p && p.sku) { if (el.textContent.indexOf(p.sku) === -1) el.textContent = "Code/MODEL : " + p.sku; }
+      else { var sc = slugCode(el.getAttribute("data-slug")); if (sc && el.textContent.indexOf(sc) === -1) el.textContent = "Code/MODEL : " + sc; }
+    });
+  }
+  document.addEventListener("nassim:catalog-loaded", updateCodes);
+  if (window.NASSIM_PRODUCTS) updateCodes();
+  var tries = 0;
+  var iv = setInterval(function () { updateCodes(); if (++tries >= 15) clearInterval(iv); }, 1000);
+})();
+</script>
 </body>
 </html>

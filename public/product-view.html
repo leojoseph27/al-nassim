@@ -325,6 +325,49 @@
        and there is no flash of the old "EN | عربي" UI before the sync runs.
        Desktop is unaffected: the whole button is display:none >=768px.
        (Same block as home5.html — the mobile nav must match home5.) */
+    /* ==== Quantity selector: the approved grayscale design applies at ALL
+       widths (mobile was the reference). width:auto also beats the page's
+       own "#breadcrumb + div > div:last-child .w-32 { width: 7rem !important }"
+       rule, which shrank the box and let Add to Cart cover the + button.
+       touch-action: manipulation prevents double-tap zoom. Mobile-only:
+       16px input font (iOS auto-zoom) — see the media block below. ==== */
+    #qty-box#qty-box { width: auto !important; }
+    #qty-box { border: 0 !important; background: transparent !important; padding: 0 !important; width: auto !important; flex: 0 0 auto !important; gap: 12px; display: flex; align-items: center; min-width: 0; }
+    #add-to-cart-btn { min-width: 0 !important; }
+    #qty-box button {
+        width: 34px; height: 34px; flex: 0 0 auto; border-radius: 9999px;
+        border: 1.5px solid rgba(0, 3, 8, 0.45); color: #44474b; background: #ffffff;
+        display: inline-flex; align-items: center; justify-content: center;
+        touch-action: manipulation;
+    }
+    #qty-box button .material-symbols-outlined { font-size: 18px; }
+    #qty-box button:active { transform: none; }
+    #qty-box input {
+        width: 3rem; height: 34px; flex: 0 0 auto; text-align: center;
+        border: 1px solid rgba(0, 3, 8, 0.18); border-radius: 6px; background: #ffffff;
+        padding: 0; touch-action: manipulation;
+    }
+    @media (max-width: 767px), (orientation: portrait) {
+      #qty-box input { font-size: 16px !important; } /* iOS anti auto-zoom */
+    }
+
+    /* ==== Purchase buttons: fully rounded pill shape (all breakpoints,
+       all states — id + !important out-ranks the rounded-sm utility and any
+       state overrides). ==== */
+    #add-to-cart-btn,
+    #buy-now-btn { border-radius: 9999px !important; }
+
+    /* ==== MOBILE QUANTITY CONTROLS (approved grayscale design) ====
+       Three SEPARATE elements: circular gray − , bordered white input,
+       circular gray +. The shared wrapper box loses its border/background
+       on mobile only; desktop keeps the original boxed selector.
+       touch-action: manipulation kills double-tap zoom on the controls
+       while pinch-zoom and scrolling stay untouched. 16px input font
+       prevents iOS Safari focus auto-zoom. ==== */
+    @media (max-width: 767px), (orientation: portrait) {
+      /* Fixed footprint so the flex-1 Add to Cart button (whose min-content
+         width would otherwise overlap the controls) never covers them. */
+    }
     @media (max-width: 767px), (orientation: portrait) {
       #home5-lang-btn span { display: none !important; }
       /* DIRECT-SWITCH MOBILE LANGUAGE: show ONLY the OTHER language
@@ -770,9 +813,9 @@
 <p class="text-on-surface-variant dark:text-white/70 leading-relaxed text-sm mb-10 max-w-md" id="product-desc"></p>
 <div class="space-y-4">
 <div class="flex gap-4">
-<div class="flex items-center bg-surface-container-high dark:bg-surface-container rounded-sm px-1 w-32 border border-outline-variant/20 dark:border-outline-variant/40 flex-shrink-0">
+<div class="flex items-center bg-surface-container-high dark:bg-surface-container rounded-sm px-1 w-32 border border-outline-variant/20 dark:border-outline-variant/40 flex-shrink-0" id="qty-box" data-product-wired="1">
 <button class="w-8 h-12 flex items-center justify-center hover:text-secondary transition-colors active:scale-90" onclick="decrementQty()"><span class="material-symbols-outlined text-lg">remove</span></button>
-<input class="text-center bg-transparent border-none focus:ring-0 font-headline font-bold flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-sm px-0 min-w-0 text-primary dark:text-white" id="qty" min="1" readonly="" type="number" value="1"/>
+<input class="text-center bg-transparent border-none focus:ring-0 font-headline font-bold flex-1 text-sm px-0 min-w-0 text-primary dark:text-white" id="qty" min="1" type="text" inputmode="numeric" pattern="\d*" autocomplete="off" value="1"/>
 <button class="w-8 h-12 flex items-center justify-center hover:text-secondary transition-colors active:scale-90" onclick="incrementQty()"><span class="material-symbols-outlined text-lg">add</span></button>
 </div>
 <button class="flex-1 bg-primary text-on-primary font-headline font-bold uppercase tracking-widest text-xs h-12 rounded-sm hover:bg-secondary transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:pointer-events-none" id="add-to-cart-btn" onclick="addToCart()"><span class="material-symbols-outlined text-lg">shopping_cart</span> Add to Cart</button>
@@ -954,7 +997,7 @@
 </a>
 <script src="/api/catalog" defer id="nassim-catalog-script" onload="document.dispatchEvent(new Event('nassim:catalog-loaded'))" onerror="window.NASSIM_CATALOG_FAILED=true;document.dispatchEvent(new Event('nassim:catalog-loaded'))"></script>
 <script src="assets/js/theme.js" defer></script>
-<script src="assets/js/dark-overrides.js?v=20261030" defer></script>
+<script src="assets/js/dark-overrides.js?v=20261030b" defer></script>
 <!-- Navigation scripts -->
 <script src="assets/js/cart-nav.js" defer></script>
 <script src="assets/js/product-nav.js" defer></script>
@@ -966,6 +1009,27 @@
     /* ===== Quantity / Favorite / Share / Toast ===== */
     function incrementQty() { const input = document.getElementById('qty'); let val = parseInt(input.value) || 1; input.value = val + 1; }
     function decrementQty() { const input = document.getElementById('qty'); let val = parseInt(input.value) || 1; if (val > 1) input.value = val - 1; }
+    /* Direct quantity editing: digits-only while typing (inputmode=numeric
+       opens the numeric keyboard); on blur/Enter an invalid or zero value
+       restores the previous valid quantity, so addToCart/buyNow always read
+       a valid number (min 1, matching the previous +/− behavior). */
+    (function () {
+      var input = document.getElementById("qty");
+      if (!input) return;
+      input.addEventListener("input", function () {
+        var clean = input.value.replace(/D/g, "").slice(0, 3);
+        if (clean !== input.value) input.value = clean;
+      });
+      input.addEventListener("focus", function () { input.dataset.prev = input.value; });
+      function commit() {
+        var q = parseInt(input.value, 10);
+        if (isNaN(q) || q < 1) q = parseInt(input.dataset.prev, 10) || 1;
+        input.value = q;
+        delete input.dataset.prev;
+      }
+      input.addEventListener("blur", commit);
+      input.addEventListener("keydown", function (e) { if (e.key === "Enter") input.blur(); });
+    })();
     function updateMainImage(thumbElement, imageUrl) { const mainImg = document.getElementById('main-product-image'); mainImg.style.opacity = '0.5'; setTimeout(() => { mainImg.src = imageUrl; mainImg.style.opacity = '1'; if (window.lens) window.lens.style.backgroundImage = `url("${imageUrl}")`; }, 150); document.querySelectorAll('.thumbnail-item').forEach(item => { item.classList.remove('thumb-active'); item.classList.add('border-transparent'); }); thumbElement.classList.add('thumb-active'); thumbElement.classList.remove('border-transparent'); }
     function toggleAccordion(id) {
       const content = document.getElementById(id);

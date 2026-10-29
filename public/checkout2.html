@@ -1784,7 +1784,7 @@ html.dark #home5-burger-btn { color: #ffffff; }
 <h2 class="font-headline text-lg font-bold text-primary dark:text-white mb-2">Customer Information</h2>
 <div><label class="block text-xs font-bold text-on-surface-variant dark:text-white/70 mb-1">Full Name *</label><input id="cust-name" type="text" required class="w-full bg-surface-container-low dark:bg-surface-container-high border border-outline-variant/40 dark:border-outline-variant/50 text-on-surface dark:text-white text-sm px-4 py-3 rounded-sm focus:outline-none focus:ring-1 focus:ring-secondary" placeholder="Your full name"/></div>
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-<div><label class="block text-xs font-bold text-on-surface-variant dark:text-white/70 mb-1">Mobile Number *</label><div dir="ltr" class="relative flex items-stretch w-full bg-surface-container-low dark:bg-surface-container-high border border-outline-variant/40 dark:border-outline-variant/50 rounded-xl focus-within:ring-1 focus-within:ring-secondary"><button type="button" id="cc-selector" aria-haspopup="listbox" aria-expanded="false" title="Select country code" class="flex items-center gap-1 px-3 py-3 text-sm text-on-surface-variant dark:text-white/70 select-none border-r border-outline-variant/40 dark:border-outline-variant/50 hover:text-secondary transition-colors bg-transparent"><span id="cc-flag" aria-hidden="true">🇰🇼</span><span id="cc-code">+965</span><span class="material-symbols-outlined" id="cc-chevron" aria-hidden="true" style="font-size:18px;line-height:1;transition:transform .2s ease;">expand_more</span></button><input id="cust-phone" type="tel" inputmode="numeric" maxlength="8" autocomplete="tel-national" required dir="ltr" class="flex-1 min-w-0 bg-transparent border-0 text-on-surface dark:text-white text-sm px-4 py-3 focus:outline-none" placeholder="0000 0000" data-dial="965"/></div></div>
+<div><label class="block text-xs font-bold text-on-surface-variant dark:text-white/70 mb-1">Mobile Number *</label><div dir="ltr" class="relative flex items-stretch w-full bg-surface-container-low dark:bg-surface-container-high border border-outline-variant/40 dark:border-outline-variant/50 rounded-xl focus-within:ring-1 focus-within:ring-secondary"><button type="button" id="cc-selector" aria-haspopup="listbox" aria-expanded="false" title="Select country code" class="flex items-center gap-1 px-3 py-3 text-sm text-on-surface-variant dark:text-white/70 select-none border-r border-outline-variant/40 dark:border-outline-variant/50 hover:text-secondary transition-colors bg-transparent"><span id="cc-flag" aria-hidden="true">🇰🇼</span><span id="cc-code">+965</span><span class="material-symbols-outlined" id="cc-chevron" aria-hidden="true" style="font-size:18px;line-height:1;transition:transform .2s ease;">expand_more</span></button><input id="cust-phone" type="tel" inputmode="numeric" maxlength="8" autocomplete="tel-national" required dir="ltr" class="flex-1 min-w-0 bg-transparent border-0 text-on-surface dark:text-white text-sm px-4 py-3 focus:outline-none" placeholder="0000 0000" data-dial="965" data-iso="KW" data-cname="Kuwait"/></div></div>
 <div><label class="block text-xs font-bold text-on-surface-variant dark:text-white/70 mb-1">Email (optional)</label><input id="cust-email" type="email" class="w-full bg-surface-container-low dark:bg-surface-container-high border border-outline-variant/40 dark:border-outline-variant/50 text-on-surface dark:text-white text-sm px-4 py-3 rounded-sm focus:outline-none focus:ring-1 focus:ring-secondary" placeholder="you@example.com"/></div>
 </div>
 </div>
@@ -2010,10 +2010,92 @@ html.dark #home5-burger-btn { color: #ffffff; }
         });
     })();
 </script>
+<!-- ==================== COUNTRY-SPECIFIC MOBILE VALIDATION (checkout2 only) =====
+     Page-local capture-phase submit guard: validates #cust-phone against the
+     numbering plan of the country chosen in the #cc-selector
+     (libphonenumber-js with mobile metadata, vendored locally — no network).
+     Kuwait keeps checkout.js's exact 8-digit rule and message untouched (this
+     guard returns early for +965). For every other country the entered number
+     must be a valid MOBILE (or FIXED_LINE_OR_MOBILE) number for the selected
+     country; the failure message names the country and shows a valid example.
+     Runs before checkout.js's bubble-phase submit handler, so an invalid
+     number blocks checkout; a valid one proceeds through the existing flow
+     and payload unchanged. Validation state is read at submit time, so
+     switching the country code switches the rules and message with it. -->
+<script>
+    (function () {
+        function ready(fn) {
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+            else fn();
+        }
+        ready(function () {
+            var form = document.getElementById("checkout-form");
+            var phoneEl = document.getElementById("cust-phone");
+            if (!form || !phoneEl || form.dataset.phoneGuard) return;
+            form.dataset.phoneGuard = "1";
+
+            function showPhoneError(msg) {
+                var err = document.getElementById("checkout-error");
+                if (err) {
+                    err.textContent = msg;
+                    err.classList.remove("hidden");
+                    if (err.scrollIntoView) err.scrollIntoView({ behavior: "smooth", block: "center" });
+                }
+                phoneEl.classList.add("ring-2", "ring-red-500", "border-red-500");
+                if (phoneEl.scrollIntoView) phoneEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                if (phoneEl.focus) phoneEl.focus();
+            }
+
+            document.addEventListener("submit", function (e) {
+                if (e.target !== form) return;
+                var dial = (phoneEl.dataset.dial || "965").replace(/\D/g, "");
+                if (dial === "965") return; // Kuwait: checkout.js's exact 8-digit rule and message, unchanged
+                var lib = window.libphonenumber;
+                if (!lib || !lib.parsePhoneNumberFromString) return; // library unavailable — checkout.js's generic rule applies
+                /* Local digits only (the calling code lives in the selector).
+                   Strip the country code only from a pasted international
+                   number (leading + or 00) — typed national digits may
+                   legitimately start with the dial code (e.g. +7 mobiles).
+                   Spaces/hyphens never count as significant characters. */
+                var digits = phoneEl.value.replace(/\D/g, "");
+                if (/^\s*\+/.test(phoneEl.value) || /^\s*00/.test(phoneEl.value)) digits = digits.replace(new RegExp("^(?:" + dial + ")"), "");
+                var iso = (phoneEl.dataset.iso || "").toUpperCase();
+                var cname = phoneEl.dataset.cname || "";
+                /* Shared calling codes (e.g. 1-242 Bahamas, 7 Kazakhstan):
+                   accept the number if ANY dial-code interpretation is a
+                   valid mobile for the selected country. */
+                var dialParts = (phoneEl.dataset.dial || "").split("-");
+                var candidates = dialParts.length > 1
+                    ? dialParts.map(function (p) { return "+" + p + digits; })
+                    : ["+" + dial + digits];
+                var ok = candidates.some(function (cand) {
+                    var parsed = lib.parsePhoneNumberFromString(cand, iso || undefined);
+                    if (!parsed || !parsed.isValid()) return false;
+                    var t = parsed.getType();
+                    return t === "MOBILE" || t === "FIXED_LINE_OR_MOBILE";
+                });
+                if (ok) return;
+                var example = "";
+                var exRaw = (window.NASSIM_PHONE_EXAMPLES || {})[iso];
+                if (exRaw) {
+                    var ex = lib.parsePhoneNumberFromString("+" + dial + exRaw, iso || undefined) ||
+                             lib.parsePhoneNumberFromString("+" + (dialParts[0] || dial) + exRaw, iso || undefined);
+                    if (ex) example = String(exRaw).replace(/(\d{4})(?=\d)/g, "$1 ");
+                }
+                var label = cname || ("+" + dial);
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                showPhoneError("Please enter a valid " + label + " mobile number for +" + dial + (example ? ", e.g. " + example : "") + ".");
+            }, true);
+        });
+    })();
+</script>
 <script src="assets/js/theme.js" defer></script>
-<script src="assets/js/dark-overrides.js?v=20261030" defer></script>
+<script src="assets/js/dark-overrides.js?v=20261030b" defer></script>
 <script src="assets/js/nassim-locations-data.js?v=2"></script>
-<script src="assets/js/phone-country-selector.js" defer></script>
+<script src="assets/js/phone-country-selector.js?v=2" defer></script>
+<script src="assets/js/vendor/libphonenumber-mobile.js"></script>
+<script src="assets/js/vendor/phone-examples.js"></script>
 <script src="assets/js/checkout.js"></script>
 <script src="assets/js/cart-nav.js" defer></script>
 <script src="assets/js/search.js" defer></script>

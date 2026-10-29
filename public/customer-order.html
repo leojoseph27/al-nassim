@@ -1577,11 +1577,11 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassim-lang") ==
   window.NASSIM_I18N["total"] = window.NASSIM_I18N["total"] || "الإجمالي";
   window.NASSIM_I18N["order items ("] = window.NASSIM_I18N["order items ("] || "عدد الأصناف (";
 </script>
-<script src="assets/js/i18n.js?v=2" defer></script>
-<script src="assets/js/order-address.js"></script>
+<script src="assets/js/i18n.js?v=3" defer></script>
+<script src="assets/js/order-address.js?v=2"></script>
 <script src="assets/js/nassim-locations-data.js" defer></script>
 <script src="assets/js/theme.js" defer></script>
-<script src="assets/js/dark-overrides.js?v=20261030" defer></script>
+<script src="assets/js/dark-overrides.js?v=20261030b" defer></script>
 
 <style>
 /* ==== MOBILE language selector + header controls: ported verbatim from
@@ -1609,6 +1609,8 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassim-lang") ==
          markup's text-primary / text-primary/50 utilities (rgba(0,3,8) and
          rgba(0,3,8,0.5)). Light mode only — dark mode keeps its white. */
       html:not(.dark) #home5-lang-btn span { color: #000000 !important; }
+      /* 2026-10-25: dark mode — solid white (matches houseware2.html) */
+      html.dark #home5-lang-btn span { color: #ffffff !important; opacity: 1 !important; }
     }
 </style>
 <style>
@@ -1737,6 +1739,105 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassim-lang") ==
   nav.glass-nav > div { flex-wrap: nowrap !important; }
   nav.glass-nav div.gap-8 a { white-space: nowrap !important; }
 }
+</style>
+
+<style>
+    /* ==== SEARCH POPUP — ONE design on every viewport (home5.html) ====
+       search.js builds a SINGLE popup (#nassim-search-overlay) for the
+       header Search icon on both mobile and desktop; the desktop glass
+       design lives in home5-mobile.css scoped to >=768px, so on mobile the
+       same popup fell back to the plain legacy panel. This block applies
+       the SAME rules (identical selectors + declarations, same keyframes)
+       at <=767px so mobile portrait/landscape open the identical desktop
+       popup — no second popup, no separate mobile design. home5-mobile.css
+       is untouched; desktop keeps its own block (the two never apply at
+       the same width). Only deliberate difference: padding-top 120px so
+       the popup clears the shorter mobile header + FREE DELIVERY bar. ==== */
+    @media (max-width: 767px), (orientation: portrait) {
+      #nassim-search-overlay {
+        background: rgba(247, 249, 255, 0.15) !important;
+        padding-top: 120px !important;
+        animation: h5searchFade 180ms ease !important;
+      }
+      @keyframes h5searchFade { from { opacity: 0; } to { opacity: 1; } }
+
+      #nassim-search-overlay > div {
+        background: rgba(248, 245, 240, 0.62) !important;
+        backdrop-filter: blur(22px) saturate(1.4) !important;
+        -webkit-backdrop-filter: blur(22px) saturate(1.4) !important;
+        border: 1px solid rgba(255, 255, 255, 0.55) !important;
+        outline: 1px solid rgba(0, 3, 8, 0.05) !important;
+        border-radius: 22px !important;
+        box-shadow: 0 12px 36px rgba(0, 3, 8, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.45) !important;
+        max-width: 600px !important;
+        animation: h5searchDrop 180ms ease !important;
+      }
+      @keyframes h5searchDrop { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+      #nassim-search-overlay > div > div:first-child {
+        position: relative !important;
+        border-bottom: none !important;
+        padding: 12px 14px !important;
+        gap: 10px !important;
+      }
+      #nassim-search-overlay > div > div:first-child::before {
+        content: 'search';
+        font-family: 'Material Symbols Outlined';
+        font-size: 20px;
+        line-height: 1;
+        color: #44474b;
+        position: absolute;
+        left: 28px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+      }
+      #nassim-search-overlay input {
+        border: 1px solid rgba(0, 3, 8, 0.08) !important;
+        outline: none !important;
+        border-radius: 9999px !important;
+        background: rgba(255, 255, 255, 0.65) !important;
+        height: 40px !important;
+        padding-left: 42px !important;
+        padding-right: 16px !important;
+        font-size: 14px !important;
+        color: #111d27 !important;
+        box-shadow: inset 0 1px 2px rgba(0, 3, 8, 0.03) !important;
+      }
+      #nassim-search-overlay input::placeholder { color: rgba(17, 29, 39, 0.45) !important; }
+      #nassim-search-overlay input:focus {
+        outline: none !important;
+        border-color: rgba(130, 83, 53, 0.35) !important;
+        box-shadow: 0 0 0 3px rgba(130, 83, 53, 0.12) !important;
+      }
+      #nassim-search-overlay > div > div:first-child > button {
+        border-radius: 9999px !important;
+        width: 30px !important;
+        height: 30px !important;
+        flex: 0 0 auto !important;
+        background: rgba(255, 255, 255, 0.65) !important;
+        color: #44474b !important;
+        font-size: 13px !important;
+        border: 1px solid rgba(0, 3, 8, 0.06) !important;
+      }
+      #nassim-search-overlay > div > div:first-child > button:hover {
+        background: #e4efff !important;
+        color: #111d27 !important;
+      }
+
+      /* ARABIC (html.lang-ar): same mirrored popup row as desktop — glyph
+         physically RIGHT, close button physically LEFT, input text space
+         on the right. The row dir=rtl comes from search.js; translation
+         key "search products..." stays central. */
+      html.lang-ar #nassim-search-overlay > div > div:first-child::before {
+        left: auto !important;
+        right: 28px;
+      }
+      html.lang-ar #nassim-search-overlay input {
+        padding-left: 16px !important;
+        padding-right: 42px !important;
+      }
+    }
 
 /* ==== DESKTOP (>767px): floating GLASS search popup for the header search
    icon — presentation only; the legacy overlay/search behavior from search.js
@@ -1867,7 +1968,12 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassim-lang") ==
     if (m) return m[1];
     var parts = String(name || "").split("-");
     var tail = parts[parts.length - 1];
-    return /[A-Za-z]-?\d/.test(tail) ? tail.trim() : "\u2014";
+    return /[A-Za-z]-?\d/.test(tail) ? tail.trim() : "";
+  }
+  /* 2026-10-25: derive a code from the item slug when the name has none (e.g. "28-815-al-nassim-nd-1197" -> "ND-1197"). */
+  function slugCode(slug) {
+    var m = String(slug || "").match(/([a-z]{1,6})-(\d+)\s*$/i);
+    return m ? (m[1] + "-" + m[2]).toUpperCase() : "";
   }
   function renderDocument(o) {
     window.__lastOrderDoc = o;
@@ -1886,7 +1992,7 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassim-lang") ==
         '<div class="os-info">' +
         '<h3 class="os-pname">' + esc(i.name) + '</h3>' +
         '<p class="os-piece">KD ' + fmt(i.price) + '/<span>piece</span></p>' +
-        '<p class="os-pcode">Code/MODEL : ' + ltr(esc(itemCode(i.name))) + '</p>' +
+        '<p class="os-pcode" data-slug="' + esc(i.slug || '') + '">Code/MODEL : ' + ltr(esc(itemCode(i.name) || slugCode(i.slug) || "\u2014")) + '</p>' +
         '<p class="os-meta-qty">Quantity: ' + i.quantity + '</p>' +
         '</div>' +
         '<div class="os-meta">' +
@@ -1902,7 +2008,7 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassim-lang") ==
     document.getElementById("os-total").textContent = "KWD " + fmt(runningTotal);
     document.getElementById("os-shipping").textContent = "KWD 0.000";
     document.getElementById("os-name").textContent = o.customerName || "";
-    document.getElementById("os-phone").innerHTML = ltr(esc(o.customerPhone || ""));
+    document.getElementById("os-phone").innerHTML = ltr(esc(window.NassimOrderAddress ? window.NassimOrderAddress.formatPhone(o.customerPhone) : (o.customerPhone || "")));
     /* Delivery address via the SHARED renderer (assets/js/order-address.js):
        the stored Governorate/Area values appear as labeled rows at the top;
        historical addresses without labels keep the exact previous display. */
@@ -2116,6 +2222,32 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassim-lang") ==
   }
   Promise.all([whenDom(), whenRendered(), settle(whenFonts()), settle(whenImages())]).then(function () { setTimeout(reveal, 60); });
   setTimeout(reveal, 6500); /* watchdog */
+})();
+</script>
+<script src="/api/catalog" defer id="nassim-catalog-script" onload="document.dispatchEvent(new Event('nassim:catalog-loaded'))" onerror="document.dispatchEvent(new Event('nassim:catalog-loaded'))"></script>
+<script>
+/* 2026-10-25: CODE/MODEL = the product's real SKU. Item rows render the
+   name-derived code as a fallback; once the catalog arrives, each row's
+   data-slug resolves the product and the SKU replaces the fallback. Re-applied
+   for a short window so language re-renders keep the real SKU. */
+(function () {
+  function updateCodes() {
+    var map = {};
+    (window.NASSIM_PRODUCTS || []).forEach(function (p) { if (p && p.id) map[p.id] = p; if (p && p.slug) map[p.slug] = p; });
+    if (!Object.keys(map).length) return;
+    document.querySelectorAll(".os-pcode[data-slug]").forEach(function (el) {
+      function slugCode(slug) { var codes = String(slug || "").match(/([a-z]{1,6})-(\d+)/gi) || []; return codes.length ? codes[codes.length - 1].toUpperCase() : ""; }
+      var p = map[el.getAttribute("data-slug")];
+      /* Skip when the correct code is already shown (EN label or the AR
+         translated one) — rewriting would flash English over Arabic. */
+      if (p && p.sku) { if (el.textContent.indexOf(p.sku) === -1) el.textContent = "Code/MODEL : " + p.sku; }
+      else { var sc = slugCode(el.getAttribute("data-slug")); if (sc && el.textContent.indexOf(sc) === -1) el.textContent = "Code/MODEL : " + sc; }
+    });
+  }
+  document.addEventListener("nassim:catalog-loaded", updateCodes);
+  if (window.NASSIM_PRODUCTS) updateCodes();
+  var tries = 0;
+  var iv = setInterval(function () { updateCodes(); if (++tries >= 15) clearInterval(iv); }, 1000);
 })();
 </script></body>
 </html>

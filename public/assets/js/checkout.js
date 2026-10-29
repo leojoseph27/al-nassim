@@ -399,9 +399,15 @@
       function currentDial() { return (phoneEl.dataset.dial || "965").replace(/\D/g, ""); }
       phoneEl.addEventListener("input", function () {
         var dial = currentDial();
-        var strip = new RegExp("^(?:" + dial + ")+");
         var max = dial === "965" ? 8 : 12;
-        var digits = phoneEl.value.replace(/\D/g, "").replace(strip, "").slice(0, max);
+        /* Strip the country code ONLY from a pasted international number
+           (leading + or 00). Unconditional stripping would eat digits that
+           legitimately start with the dial code (e.g. every Kazakh mobile
+           starts with 7, the +7 dial digit). */
+        var pastedIntl = /^\s*\+/.test(phoneEl.value) || /^\s*00/.test(phoneEl.value);
+        var digits = phoneEl.value.replace(/\D/g, "");
+        if (pastedIntl) digits = digits.replace(new RegExp("^(?:" + dial + ")"), "");
+        digits = digits.slice(0, max);
         if (digits !== phoneEl.value) phoneEl.value = digits;
       });
     })();
@@ -415,7 +421,7 @@
           var banner = document.getElementById("logged-in-banner");
           if (banner) banner.classList.remove("hidden");
           var nameEl = document.getElementById("cust-name"); if (nameEl && !nameEl.value) nameEl.value = u.name || "";
-          var phoneEl = document.getElementById("cust-phone"); if (phoneEl && !phoneEl.value) { var dial = (phoneEl.dataset.dial || "965").replace(/\D/g, ""); phoneEl.value = (u.phone || "").replace(/\D/g, "").replace(new RegExp("^(?:" + dial + ")+"), "").slice(0, dial === "965" ? 8 : 12); }
+          var phoneEl = document.getElementById("cust-phone"); if (phoneEl && !phoneEl.value) { var dial = (phoneEl.dataset.dial || "965").replace(/\D/g, ""); phoneEl.value = (u.phone || "").replace(/\D/g, "").replace(new RegExp("^(?:" + dial + ")"), "").slice(0, dial === "965" ? 8 : 12); }
           var emailEl = document.getElementById("cust-email"); if (emailEl && !emailEl.value) emailEl.value = u.email || "";
           // Try to load default address
           fetch("/api/addresses", { credentials: "same-origin" })
@@ -456,9 +462,14 @@
         var dial = ((phoneEl && phoneEl.dataset.dial) || "965").replace(/\D/g, "");
         var maxDigits = dial === "965" ? 8 : 12;
         // Field holds only the local digits (the calling code lives in the
-        // country selector, surfaced via data-dial). If the customer pastes a
-        // full number, strip the selected country code first.
-        var phoneDigits = phone.replace(/\D/g, "").replace(new RegExp("^(?:" + dial + ")+"), "").slice(0, maxDigits);
+        // country selector, surfaced via data-dial). If the customer pasted a
+        // full international number (leading + or 00), strip the selected
+        // country code first — never strip typed national digits (they can
+        // legitimately start with the dial code, e.g. +7 Kazakh mobiles).
+        var pastedIntl = /^\s*\+/.test(phone) || /^\s*00/.test(phone);
+        var phoneDigits = phone.replace(/\D/g, "");
+        if (pastedIntl) phoneDigits = phoneDigits.replace(new RegExp("^(?:" + dial + ")"), "");
+        phoneDigits = phoneDigits.slice(0, maxDigits);
         if (phoneEl && phoneDigits !== phoneEl.value) phoneEl.value = phoneDigits;
         var phoneOk = dial === "965" ? /^\d{8}$/.test(phoneDigits) : /^\d{6,12}$/.test(phoneDigits);
         var phoneNormalized = "+" + dial + phoneDigits;

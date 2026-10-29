@@ -313,6 +313,7 @@ window.NASSIM_I18N = {
  "your order has been received.": "تم استلام طلبك.",
  "please click the link below to view your order and carefully read the important notice, which explain how your order will be processed and finalized.": "يرجى النقر على الرابط أدناه لرؤية طلبك وقراءة الإشعار المهم بعناية، والذي يشرح كيفية معالجة طلبك وإتمامه.",
  "we only accept orders above 5 kd.": "نقبل فقط الطلبات التي تزيد قيمتها عن 5 د.ك.",
+ "you will pay when your order is delivered.": "سيتم الدفع عند توصيل طلبك.",
  "free delivery": "التوصيل مجاني",
  "your order will be delivered within the next 2 days.": "سيتم توصيل طلبك خلال اليومين القادمين.",
  "note:": "ملاحظة:",
@@ -344,6 +345,9 @@ window.NASSIM_I18N = {
  "unit price": "سعر الوحدة",
  "important notice: our store team will contact you to confirm product availability and any required order changes before finalizing your order, after which the invoice will be issued at the store’s point of sale and provided with your goods upon delivery.": "اشعار هام : سيتصل بك فريق المتجر لدينا لتأكيد توفر المنتجات وأي تغييرات مطلوبة في الطلب قبل إتمام طلبك، وبعد ذلك سيتم إصدار الفاتورة في نقطة البيع بالمتجر وتقديمها مع بضائعك عند التسليم.",
  "important notice:": "اشعار هام:",
+ "our store team will contact you to confirm product availability, make any necessary changes to your order, and schedule delivery.": " سيتواصل معكم فريق المتجر لتأكيد توفر المنتجات، وإجراء أي تعديلات لازمة على الطلب، وتحديد موعد التوصيل.",
+ "once your order is finalized, the invoice will be issued at the store and provided with your goods upon delivery.": "بعد تأكيد الطلب نهائيًا، ستصدر الفاتورة من المتجر وتُسلّم لكم مع البضائع عند التوصيل.",
+ "note: the total may vary based on actually delivered items.": "ملاحظة: قد يختلف الإجمالي بناءً على العناصر التي تم تسليمها فعليًا.",
  "Contact Our Team: 00000000": "للتواصل مع فريقنا: 00000000",
  "Custom Packaging Manufacturing & Printing.": "تصنيع التغليف حسب الطلب والطباعة عليه",
  "We transform your ideas into high-quality packaging and precision printing solutions, from initial design to final delivery.": "نحن نحول أفكارك إلى حلول تغليف عالية الجودة وحلول طباعة دقيقة، بدءًا من التصميم الأولي وحتى التسليم النهائي."
@@ -1187,6 +1191,15 @@ window.NASSIM_I18N_REVERSE = {
  ],
  "اشعار هام: سيتصل بك فريق المتجر لدينا لتأكيد توفر المنتجات وأي تغييرات مطلوبة في الطلب قبل إتمام طلبك، وبعد ذلك سيتم إصدار الفاتورة في نقطة البيع بالمتجر وتقديمها مع بضائعك عند التسليم.": [
   "Important Notice: our store team will contact you to confirm product availability and any required order changes before finalizing your order, after which the invoice will be issued at the store’s point of sale and provided with your goods upon delivery."
+ ],
+ "ملاحظة: قد يختلف الإجمالي بناءً على العناصر التي تم تسليمها فعليًا.": [
+  "Note: The total may vary based on actually delivered items."
+ ],
+ "ملاحظة هامة:": [
+  "Important Notice:"
+ ],
+ "سيتواصل معكم فريق المتجر لتأكيد توفر المنتجات، وإجراء أي تعديلات لازمة على الطلب، وتحديد موعد التوصيل. بعد تأكيد الطلب نهائيًا، ستصدر الفاتورة من المتجر وتُسلّم لكم مع البضائع عند التوصيل.": [
+  "Our store team will contact you to confirm product availability, make any necessary changes to your order, and schedule delivery. Once your order is finalized, the invoice will be issued at the store and provided with your goods upon delivery."
  ],
  "اشعار هام:": [
   "Important Notice:"

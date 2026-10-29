@@ -274,7 +274,7 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassimStaffLang"
 <script src="assets/js/i18n-data.js?v=5" defer></script>
 <script src="assets/js/i18n.js" defer></script>
 <script src="assets/js/nassim-locations-data.js" defer></script>
-<script src="assets/js/order-address.js" defer></script>
+<script src="assets/js/order-address.js?v=2" defer></script>
 <style>
   /* ---- scoped design (this page only) ---- */
   #os-wrap { background: #FFFFFF; }
@@ -975,7 +975,7 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassimStaffLang"
          dir="ltr" + unicode-bidi:isolate keeps "+965XXXXXXXX" reading
          left-to-right without touching the stored value or the table's
          RTL direction. */
-      '<td><span dir="ltr" style="unicode-bidi:isolate;">' + esc(o.customerPhone) + '</span></td>' +
+      '<td><span dir="ltr" style="unicode-bidi:isolate;">' + esc(window.NassimOrderAddress ? window.NassimOrderAddress.formatPhone(o.customerPhone) : o.customerPhone) + '</span></td>' +
       '<td class="muted">' + esc(window.NassimOrderAddress && window.NassimOrderAddress.resolveLocation ? window.NassimOrderAddress.resolveLocation(o.city) : (o.city || "")) + '</td>' +
       '<td class="num">' + esc(fmtKd(o.total, o.currency)) + '</td>' +
       '<td><span class="badge" style="background:' + badge[0] + ';color:' + badge[1] + '">' + esc(vb.label) + '</span></td>' +
@@ -1169,7 +1169,7 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassimStaffLang"
     document.getElementById("os-total").textContent = "KWD " + fmt(runningTotal);
     document.getElementById("os-shipping").textContent = "KWD 0.000";
     document.getElementById("os-name").textContent = o.customerName || "";
-    document.getElementById("os-phone").innerHTML = ltr(esc(o.customerPhone || ""));
+    document.getElementById("os-phone").innerHTML = ltr(esc(window.NassimOrderAddress ? window.NassimOrderAddress.formatPhone(o.customerPhone) : (o.customerPhone || "")));
     /* Delivery address via the SHARED renderer (assets/js/order-address.js):
        the stored Governorate/Area values appear as labeled rows at the top;
        historical addresses without labels keep the exact previous display. */

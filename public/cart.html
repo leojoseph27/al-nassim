@@ -47,7 +47,7 @@
 <link rel="stylesheet" href="/assets/css/fonts-local.css?v=20261013"/>
 <script></script>
 <link rel="stylesheet" href="assets/css/rtl-overrides.css?v=6"/>
-<script src="assets/js/i18n-data.js?v=5" defer></script>
+<script src="assets/js/i18n-data.js?v=8" defer></script>
 <script src="assets/js/product-name.js?v=1"></script>
 <script src="assets/js/i18n.js?v=2" defer></script>
 
@@ -205,7 +205,7 @@
            element is affected. */
         .cod-notice {
             display: flex;
-            align-items: flex-start;
+            align-items: center;
             gap: 0.75rem;
             margin-top: 1.25rem;
             background: #FFF4DF;
@@ -217,7 +217,6 @@
         .cod-notice .cod-notice-icon { font-size: 24px; color: #92400E; flex-shrink: 0; }
         .cod-notice .cod-notice-text { min-width: 0; }
         .cod-notice .cod-notice-title { font-weight: 700; font-size: 0.95rem; line-height: 1.3; }
-        .cod-notice .cod-notice-subtitle { font-weight: 400; font-size: 0.875rem; line-height: 1.4; margin-top: 0.15rem; overflow-wrap: break-word; }
         /* Arabic: icon physically on the right, text right-aligned and RTL */
         html.lang-ar .cod-notice { flex-direction: row-reverse; }
         html.lang-ar .cod-notice .cod-notice-text { text-align: right; }
@@ -1568,7 +1567,6 @@ setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.st
   <span class="material-symbols-outlined cod-notice-icon" aria-hidden="true">payments</span>
   <div class="cod-notice-text">
     <p class="cod-notice-title">Cash on Delivery</p>
-    <p class="cod-notice-subtitle">You will pay when your order is delivered.</p>
   </div>
 </div>
 <div class="space-y-4 mt-6"><a href="checkout2.html" style="border-radius:9999px" class="block text-center w-full bg-primary text-on-primary py-5 font-headline text-xs font-black uppercase tracking-[0.2em] hover:bg-secondary transition-all">Continue with Your Order</a></div>

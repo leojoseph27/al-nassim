@@ -299,3 +299,26 @@
   html.lang-ar #home5-min5-pill { font-size: 11px !important; padding: 6px 10px !important; }
   html.lang-ar #home5-lang-btn span { font-size: 11px !important; }
 }
+
+/* ==== PRODUCT LISTING FILTER/SORT ROW (mobile + iPad portrait only) ====
+   The FILTER BY / SORT BY row (.nassim-controls-row) exists only on the
+   product listing / subcategory pages. On phones and portrait tablets the
+   row must be two exactly equal buttons: the row becomes an equal 2-column
+   grid (so neither control can grow wider than the other, regardless of
+   its content), and the relocated sort pill's wrapper (.ncr-sort-slot)
+   — which previously shrank to its content width, making SORT BY visibly
+   narrower than FILTER BY — now fills its column. Desktop and iPad
+   landscape never match this query, so their layout is untouched. */
+@media (max-width: 767px), (orientation: portrait) {
+  .nassim-controls-row.nassim-controls-row {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+  .nassim-controls-row .ncr-sort,
+  .nassim-controls-row .ncr-sort .ncr-sort-slot {
+    width: 100%;
+    min-width: 0;
+  }
+}

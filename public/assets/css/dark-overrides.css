@@ -907,3 +907,14 @@ html.dark #sc-toast { background: #ffffff !important; color: #000308 !important;
 html.dark #sc-toast .material-symbols-outlined { color: #000308 !important; }
 html.dark #toast-container .toast-animate { background: #ffffff !important; color: #000308 !important; }
 html.dark #toast-container .toast-animate .material-symbols-outlined { color: #000308 !important; }
+
+/* ---- Header cart count badge (every storefront page header) ----
+   White badge with black number in dark mode only; size, shape, position
+   and the Light-Mode brown badge are untouched. Covers the mobile bottom-nav badge (#header-cart-count) and the
+   desktop top-nav cart badge (.nassim-cart-badge). !important outranks the
+   bg-secondary / text-white utilities in the markup. */
+html.dark #header-cart-count,
+html.dark .nassim-cart-badge {
+  background-color: #FFFFFF !important;
+  color: #000000 !important;
+}

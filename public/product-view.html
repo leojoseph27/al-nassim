@@ -51,6 +51,10 @@
            the image box to the dark surface and disables mix-blend-multiply
            (multiply on a dark background would black out the product). */
         #related-grid > a > div:first-child { border: 1px solid rgba(0, 3, 8, 0.12) !important; background-color: #ffffff !important; } /* light: tint; dark overridden below to white */
+        /* Mobile-only View Product button (under the price): hidden on
+           desktop — only the mobile media query shows it. The whole card is
+           an <a>, so tapping it keeps the existing product navigation. */
+        .related-mobile-view { display: none; }
         html.dark #related-grid > a > div:first-child { border-color: rgba(255, 255, 255, 0.12) !important; background-color: #ffffff !important; }
         html.dark #related-grid > a > div:first-child img { mix-blend-mode: normal !important; }
 
@@ -160,6 +164,104 @@
             section.mt-20:last-of-type .flex.justify-between h2 { font-size: 1.25rem !important; }
         }
 
+        /* ==== RELATED PRODUCTS (mobile) — compact cards matching the
+           redesigned "You May Also Like" cards in cart.html: two cards
+           side by side, white bg, 24px radius, subtle border, black pill
+           "View Product" centred over the image, no category label,
+           circular white arrow buttons. Desktop (>=768px landscape) is
+           untouched — every rule here is inside this mobile media query.
+           The whole card is one <a>, so the pill keeps the existing
+           product navigation. ==== */
+        @media (max-width: 767px), (orientation: portrait) {
+            /* Section spacing: less air above, heading inset + smaller */
+            section.mt-20 { margin-top: 1.25rem !important; }
+            section.mt-20 .related-header { margin-bottom: 0.75rem !important; padding-inline-start: 0.25rem !important; align-items: center !important; }
+            section.mt-20:last-of-type .flex.justify-between h2,
+            section.mt-20 .related-header h2 { font-size: 1.05rem !important; font-weight: 800 !important; letter-spacing: 0.05em !important; color: #000308 !important; }
+            /* Heading LEFT-ALIGNED in BOTH languages: the header row keeps
+               physical LTR geometry, so the page's RTL direction cannot mirror
+               the Arabic heading to the right. Arabic text still renders and
+               wraps correctly inside the h2 (Unicode bidi handles the run),
+               and the arrows stay on the opposite side of the row. */
+            section.mt-20 .related-header { direction: ltr !important; }
+            section.mt-20 .related-header h2 { text-align: left !important; }
+            /* The shared i18n runtime stamps RTL text blocks with
+               margin-left:auto (nassim-rtl-anchor) to push them right — undo
+               that here so the Arabic heading sits physically at the LEFT
+               edge like the English one. */
+            section.mt-20 .related-header h2,
+            section.mt-20 .related-header > div:first-child { margin-left: 0 !important; margin-right: 0 !important; }
+            /* Dark Mode: the mobile pin above forces #000308 (black) in BOTH
+               themes, which swallows the dark:text-white utility — re-assert
+               white under html.dark. Typography/size/weight untouched. */
+            html.dark section.mt-20 .related-header h2,
+            html.dark section.mt-20:last-of-type .flex.justify-between h2 { color: #ffffff !important; }
+            /* Product names: the card h3 uses dark:text-white, which is white
+               text on the card's WHITE background in Dark Mode. The cards are
+               white in both themes, so the name is always near-black #111111.
+               Wrapping is the h3's normal block wrap — no clipping. */
+            #related-grid > a h3 { color: #111111 !important; }
+            /* Prices keep the Light-Mode brown on the white cards in Dark Mode
+               too (dark-overrides.css recolours .text-secondary globally). */
+            #related-grid > a > p.text-secondary { color: #825335 !important; }
+            /* Circular white arrows (same buttons scrollRelated() wires).
+               Selector mirrors + exceeds the older "hide arrows on mobile"
+               rule further above so the override wins the cascade. */
+            section.mt-20:last-of-type .flex.justify-between .flex.gap-4.related-arrows { display: flex !important; gap: 0.5rem !important; }
+            section.mt-20 .related-arrows button {
+                width: 64px !important; height: 64px !important; padding: 0 !important;
+                display: inline-flex !important; align-items: center !important; justify-content: center !important;
+                background: #ffffff !important; color: #000308 !important;
+                border: 1px solid rgba(0, 3, 8, 0.14) !important; border-radius: 9999px !important;
+            }
+            section.mt-20 .related-arrows button { touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+            section.mt-20 .related-arrows button .material-symbols-outlined { font-size: 22px !important; color: #000308 !important; }
+            /* Carousel: two compact cards side by side */
+            #related-grid { gap: 0.75rem !important; padding: 0.25rem 1rem 0.5rem 1rem !important; }
+            #related-grid > a {
+                flex: 0 0 calc(50% - 0.375rem) !important;
+                min-width: calc(50% - 0.375rem) !important;
+                max-width: calc(50% - 0.375rem) !important;
+                display: flex !important; flex-direction: column !important;
+                background: #ffffff !important;
+                border: 1px solid rgba(0, 3, 8, 0.12) !important;
+                border-radius: 24px !important;
+                padding: 0.5rem !important;
+                box-sizing: border-box !important;
+            }
+            /* Image box: square, rounded, NO lining, images contained */
+            #related-grid > a > div:first-child {
+                aspect-ratio: 1 / 1 !important;
+                border-radius: 16px !important;
+                border: none !important;
+                margin-bottom: 0.45rem !important;
+            }
+            #related-grid > a > div:first-child img { width: 100% !important; height: 100% !important; object-fit: contain !important; object-position: center !important; }
+            /* Mobile Add-to-Cart overlay removed (spec: no rectangular button)
+               AND the image-area pill removed: View Product moved BELOW the
+               price as the black button (.related-mobile-view), same position
+               as the You May Also Like cards in cart.html. */
+            #related-grid > a > div:first-child > div:last-child,
+            #related-grid > a > div:first-child > div:nth-child(2) { display: none !important; }
+            /* Black View Product button under the price, same look/position as
+               cart.html's mobile .yml-atc. Whole card is an <a>, so tapping
+               keeps the existing product navigation. */
+            #related-grid > a .related-mobile-view {
+                display: inline-flex !important; align-items: center !important; justify-content: center !important;
+                margin-top: auto !important; width: 100% !important;
+                background: #000308 !important; color: #ffffff !important;
+                font-family: 'Manrope', sans-serif !important;
+                font-size: 0.6rem !important; font-weight: 800 !important;
+                letter-spacing: 0.06em !important; text-transform: uppercase !important;
+                padding: 0.5rem 0.4rem !important; border-radius: 0.5rem !important;
+                cursor: pointer; -webkit-tap-highlight-color: transparent;
+            }
+            /* Name + price typography; no category label exists in this
+               template, names wrap naturally via the shared product-name rules */
+            #related-grid > a h3 { font-size: 0.72rem !important; line-height: 1.2 !important; margin-bottom: 0.15rem !important; }
+            #related-grid > a p { font-size: 0.85rem !important; }
+        }
+
             /* ---- Product-name rendering (product-view only): the complete
                database value is ONE plain text node rendered with NORMAL
                word-boundary wrapping — the browser alone decides where each
@@ -193,8 +295,8 @@
 <link rel="stylesheet" href="assets/css/nav-popover-mobile.css?v=10"/>
 <script src="assets/js/nav-popover-mobile.js?v=5" defer></script>
 <link rel="stylesheet" href="assets/css/home5-mobile.css?v=4">
-<link rel="stylesheet" href="assets/css/dark-overrides.css?v=nw1102">
-<link rel="stylesheet" href="assets/css/rtl-overrides.css?v=6"/>
+<link rel="stylesheet" href="assets/css/dark-overrides.css?v=nw1108">
+<link rel="stylesheet" href="assets/css/rtl-overrides.css?v=7"/>
 <script src="assets/js/i18n-data.js?v=5" defer></script>
 <script src="assets/js/product-name.js?v=1"></script>
 <script src="assets/js/i18n.js?v=2" defer></script>
@@ -346,6 +448,44 @@
         width: 3rem; height: 34px; flex: 0 0 auto; text-align: center;
         border: 1px solid rgba(0, 3, 8, 0.18); border-radius: 6px; background: #ffffff;
         padding: 0; touch-action: manipulation;
+    }
+    /* i18n.js anchors the heading group right with margin-left:auto; the section
+       keeps the English structure, with RTL only inside the text elements. */
+    /* Mirror the header row like the cart page: heading right, arrows left.
+       The carousel itself stays LTR, so the icons keep their native LTR
+       direction (previous = left) and the AR flip rules are cancelled. */
+    html.lang-ar .related-header { flex-direction: row-reverse; }
+    html.lang-ar .related-header button[onclick="scrollRelated(-1)"] .material-symbols-outlined,
+    html.lang-ar .related-header button[onclick="scrollRelated(1)"] .material-symbols-outlined { transform: none; }
+    html.lang-ar .related-header > div:first-child { margin-left: 0 !important; }
+    /* Desktop Related Products: ONE horizontal carousel row (cart.html
+       You-May-Also-Like behaviour) instead of a 4-column grid, so all six
+       recommendations are reachable by arrows, wheel, drag or swipe. */
+    @media (min-width: 768px) and (orientation: landscape) {
+        #related-grid {
+            display: flex !important; flex-wrap: nowrap !important;
+            overflow-x: auto !important; overflow-y: hidden !important;
+            scroll-snap-type: x mandatory !important; scroll-behavior: smooth !important;
+            -webkit-overflow-scrolling: touch; gap: 2rem !important;
+            scrollbar-width: none; -ms-overflow-style: none;
+            grid-template-columns: none !important; cursor: grab;
+        }
+        #related-grid::-webkit-scrollbar { display: none; }
+        #related-grid.is-grabbing { cursor: grabbing !important; }
+        #related-grid > a {
+            flex: 0 0 calc(25% - 1.5rem) !important; min-width: calc(25% - 1.5rem) !important;
+            max-width: calc(25% - 1.5rem) !important; scroll-snap-align: start;
+        }
+    }
+    /* The input stays white in dark mode, so the dark:text-white utility would
+       hide the digits. -webkit-text-fill-color and opacity cover iOS Safari,
+       which otherwise fades disabled inputs. */
+    html.dark #qty-box input,
+    html.dark #qty-box input:disabled {
+        color: #111111 !important; -webkit-text-fill-color: #111111; caret-color: #111111; opacity: 1;
+    }
+    html.dark #qty-box input::placeholder {
+        color: #111111; -webkit-text-fill-color: #111111; opacity: 0.6;
     }
     @media (max-width: 767px), (orientation: portrait) {
       #qty-box input { font-size: 16px !important; } /* iOS anti auto-zoom */
@@ -949,6 +1089,7 @@
             if (cartBtn) cartBtn.addEventListener('click', function () {
                 window.location.href = 'cart.html';
             });
+                try { sessionStorage.setItem('nassim_new_cart_session', '1'); sessionStorage.removeItem('nassim_order_done'); } catch (e) {}
 
             // Cart badge: #header-cart-count is synced by cart-nav.js. We only
             // toggle its visibility based on the synced value (presentation only).
@@ -999,7 +1140,7 @@
 <script src="assets/js/theme.js" defer></script>
 <script src="assets/js/dark-overrides.js?v=20261030b" defer></script>
 <!-- Navigation scripts -->
-<script src="assets/js/cart-nav.js" defer></script>
+<script src="assets/js/cart-nav.js?v=3" defer></script>
 <script src="assets/js/product-nav.js" defer></script>
 <script src="assets/js/listing-pagination.js?v=4" defer></script>
 <script src="assets/js/search.js" defer></script>
@@ -1161,8 +1302,52 @@
       }
       if (window.NassimCartBadge) window.NassimCartBadge.update();
     }
-    function buyNow() { addToCart(); showToast("Added to cart"); setTimeout(function() { window.location.href = 'cart.html'; }, 400); }
-    function scrollRelated(dir) { const grid = document.getElementById('related-grid'); if (!grid) return; const card = grid.querySelector('[data-product-card]'); const step = card ? (card.offsetWidth + 32) * dir : 300 * dir; grid.scrollBy({ left: step, behavior: 'smooth' }); }
+    function buyNow() { addToCart(); showToast("Added to cart"); try { sessionStorage.setItem('nassim_new_cart_session', '1'); sessionStorage.removeItem('nassim_order_done'); } catch (e) {} setTimeout(function() { window.location.href = 'cart.html'; }, 400); }
+    /* Cart-style arrow navigation: step exactly one card and clamp to the
+       real scroll range, so the carousel never parks past the last card. */
+    function scrollRelated(dir) {
+      const grid = document.getElementById('related-grid');
+      if (!grid) return;
+      const cards = grid.querySelectorAll('[data-product-card]');
+      if (!cards.length) return;
+      const gridLeft = grid.getBoundingClientRect().left;
+      const lefts = Array.from(cards).map(function (c) { return c.getBoundingClientRect().left - gridLeft + grid.scrollLeft; });
+      let target = null;
+      if (dir === 1) { for (let i = 0; i < lefts.length; i++) { if (lefts[i] > grid.scrollLeft + 8) { target = lefts[i]; break; } } }
+      else { for (let i = 0; i < lefts.length; i++) { if (lefts[i] < grid.scrollLeft - 8) target = lefts[i]; } }
+      if (target == null) return; /* already at that end */
+      const max = grid.scrollWidth - grid.clientWidth;
+      grid.scrollTo({ left: Math.max(0, Math.min(target, max)), behavior: 'smooth' });
+    }
+    /* Desktop parity with the cart carousel: vertical wheel scrolls
+       horizontally, and click-drag pans the row (links suppressed after a
+       real drag). Touch already swipes natively. */
+    (function () {
+      if (!window.matchMedia('(min-width: 768px) and (orientation: landscape)').matches) return;
+      var grid = document.getElementById('related-grid');
+      if (!grid) return;
+      grid.addEventListener('wheel', function (e) {
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { e.preventDefault(); grid.scrollLeft += e.deltaY; }
+      }, { passive: false });
+      var isDown = false, startX = 0, startLeft = 0, moved = false;
+      grid.addEventListener('pointerdown', function (e) {
+        if (e.pointerType === 'touch') return;
+        isDown = true; moved = false; startX = e.pageX; startLeft = grid.scrollLeft;
+        grid.classList.add('is-grabbing');
+      });
+      grid.addEventListener('pointermove', function (e) {
+        if (!isDown) return;
+        var dx = e.pageX - startX;
+        if (Math.abs(dx) > 5) moved = true;
+        grid.scrollLeft = startLeft - dx;
+      });
+      function endDrag() { isDown = false; grid.classList.remove('is-grabbing'); }
+      grid.addEventListener('pointerup', endDrag);
+      grid.addEventListener('pointerleave', endDrag);
+      grid.addEventListener('click', function (e) {
+        if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; }
+      }, true);
+    })();
     let toastTimeout;
     function showToast(message) { const container = document.getElementById('toast-container'); while (container.firstChild) container.removeChild(container.firstChild); if (toastTimeout) clearTimeout(toastTimeout); const toast = document.createElement('div'); toast.className = 'toast-animate bg-primary/90 text-on-primary px-6 py-3 rounded-full text-xs font-bold uppercase tracking-widest shadow-2xl backdrop-blur-md border border-white/10 flex items-center gap-2 mb-4 pointer-events-auto'; let iconName = 'check_circle'; if (message.includes('Removed')) iconName = 'heart_minus'; if (message.includes('Link copied')) iconName = 'content_copy'; toast.innerHTML = `<span class="material-symbols-outlined text-sm">${iconName}</span>${message}`; container.appendChild(toast); toastTimeout = setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateY(-20px)'; toast.style.transition = 'all 0.4s ease'; setTimeout(() => { if (toast.parentNode === container) toast.remove(); }, 400); }, 3000); }
 
@@ -1426,34 +1611,35 @@
        content above never waits for it. */
     function renderRelatedProducts(product) {
       if (!product || !window.NASSIM_PRODUCTS) return;
-      // Related products priority: 1) admin-selected (relatedIds), 2) same section, 3) same department
+      /* Six dynamic recommendations, same approach as the cart's You May
+         Also Like strip: Fisher-Yates shuffle per tier, never the viewed
+         product, no duplicates. Same subcategory first (e.g. knife with
+         knives), then same category, then same department, then anything. */
+      var TARGET = 6;
       var related = [];
-      // 1. Admin-selected related products
+      // 1. Admin-selected related products stay first
       if (product.relatedIds && product.relatedIds.length) {
         product.relatedIds.forEach(function(rid) {
           var rp = window.NassimGetProduct(rid);
-          if (rp && rp.id !== product.id) related.push(rp);
+          if (rp && rp.id !== product.id && related.length < TARGET && !related.find(function(r) { return r.id === rp.id; })) related.push(rp);
         });
       }
-      // 2. Same section products
-      if (related.length < 4 && product.sectionSlug) {
-        window.NASSIM_PRODUCTS.forEach(function(p) {
-          if (related.length < 4 && p.id !== product.id && p.sectionSlug === product.sectionSlug && !related.find(r => r.id === p.id)) related.push(p);
-        });
+      var selfId = product.id;
+      function fillTiers(tiers) {
+        for (var t = 0; t < tiers.length && related.length < TARGET; t++) {
+          var pool = window.NASSIM_PRODUCTS.filter(function(p) {
+            return p && p.id && p.id !== selfId && tiers[t](p) && !related.find(function(r) { return r.id === p.id; });
+          });
+          for (var i = pool.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp; }
+          for (var k = 0; k < pool.length && related.length < TARGET; k++) related.push(pool[k]);
+        }
       }
-      // 3. Same department products
-      if (related.length < 4 && product.departmentSlug) {
-        window.NASSIM_PRODUCTS.forEach(function(p) {
-          if (related.length < 4 && p.id !== product.id && p.departmentSlug === product.departmentSlug && !related.find(r => r.id === p.id)) related.push(p);
-        });
-      }
-      // 4. Fallback: any products
-      if (related.length < 4) {
-        window.NASSIM_PRODUCTS.forEach(function(p) {
-          if (related.length < 4 && p.id !== product.id && !related.find(r => r.id === p.id)) related.push(p);
-        });
-      }
-      related = related.slice(0, 4);
+      fillTiers([
+        function(p) { return product.subcategorySlug && p.subcategorySlug === product.subcategorySlug; },
+        function(p) { return product.categorySlug && p.categorySlug === product.categorySlug; },
+        function(p) { return product.departmentSlug && p.departmentSlug === product.departmentSlug; },
+        function() { return true; }
+      ]);
       var relatedGrid = document.getElementById('related-grid');
       relatedGrid.innerHTML = related.map(function(p) {
         return '<a href="product-view.html?id=' + encodeURIComponent(p.id) + '" data-product-card class="group cursor-pointer"><div class="aspect-[4/5] bg-surface-container-lowest dark:bg-surface-container flex items-center justify-center rounded-xl overflow-hidden mb-6 relative related-img-box"><img loading="lazy" class="w-full h-full object-contain object-center mix-blend-multiply transition-transform duration-700 group-hover:scale-105" src="' + escapeHtml(p.img) + '" alt="' + escapeHtml(p.name) + '"/>' +
@@ -1461,7 +1647,7 @@
           '<div class="absolute bottom-4 left-4 right-4 translate-y-12 md:translate-y-12 group-hover:translate-y-0 transition-transform duration-300 hidden md:block"><span class="block w-full bg-black text-white font-bold text-[10px] uppercase py-3 rounded-sm shadow-xl text-center">View Product</span></div>' +
           /* Mobile overlay — always visible, Add to Cart button; hidden on desktop */
           '<div class="absolute bottom-4 left-4 right-4 md:hidden"><button type="button" data-related-add-to-cart="' + encodeURIComponent(p.id) + '" class="flex items-center justify-center gap-1.5 w-full bg-black text-white font-bold text-[10px] uppercase py-3 rounded-sm shadow-xl"><span class="material-symbols-outlined" style="font-size:14px;">shopping_cart</span> Add to Cart</button></div>' +
-          '</div><h3 class="font-headline font-bold text-sm mb-1 text-on-surface dark:text-white group-hover:text-secondary transition-colors">' + escapeHtml(p.name) + '</h3><p class="text-secondary font-bold text-xs">' + (p.currency||'KD') + ' ' + p.price.toFixed(3) + '</p></a>';
+          '</div><h3 class="font-headline font-bold text-sm mb-1 text-on-surface dark:text-white group-hover:text-secondary transition-colors">' + escapeHtml(p.name) + '</h3><p class="text-secondary font-bold text-xs">' + (p.currency||'KD') + ' ' + p.price.toFixed(3) + '</p><span class="related-mobile-view">View Product</span></a>';
       }).join('');
     }
     document.addEventListener('nassim:catalog-loaded', function () {
@@ -1577,9 +1763,22 @@
       if (typeof orig !== 'function') return;
       window.scrollRelated = function (dir) {
         var grid = document.getElementById('related-grid');
-        var card = grid && grid.querySelector('[data-product-card]');
+        if (!grid) return;
+        var card = grid.querySelector('[data-product-card]');
         var step = card ? Math.round(card.getBoundingClientRect().width + 16) * dir : 300 * dir;
-        if (grid) grid.scrollBy({ left: step, behavior: 'smooth' });
+        /* Clamp the ABSOLUTE target to the container's real scroll range so a
+           rapid series of arrow taps can never park the carousel past the last
+           card (WebKit's smooth scrollBy on a mandatory-snap container does not
+           reliably clamp its own target). scrollWidth/clientWidth are read live
+           at every click, so the boundary self-corrects after images load,
+           resizes or orientation changes. Math.min(0, max) keeps the clamp
+           correct on RTL engines where scrollLeft runs negative (Firefox/iOS
+           RTL); Chrome's LTR-style RTL scrollLeft is unaffected. Desktop keeps
+           the unwrapped scrollRelated() — this wrapper is mobile-only. */
+        var max = grid.scrollWidth - grid.clientWidth;
+        var min = Math.min(0, max);
+        var target = Math.min(Math.max(grid.scrollLeft + step, min), max);
+        grid.scrollTo({ left: target, behavior: 'smooth' });
       };
     })();
 </script>

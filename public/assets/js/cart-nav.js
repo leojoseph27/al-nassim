@@ -94,6 +94,14 @@
         btn.style.cursor = "pointer";
         btn.addEventListener("click", function (e) {
           e.preventDefault();
+          /* Deliberate "open cart" navigation = the customer is starting a
+             new shopping session. Clear the completed-order flag (even when
+             the cart is empty) and mark the intent so cart.html's guard
+             lets this load through. */
+          try {
+            sessionStorage.setItem("nassim_new_cart_session", "1");
+            sessionStorage.removeItem("nassim_order_done");
+          } catch (err) {}
           window.location.href = "cart.html";
         });
         break;
@@ -102,6 +110,32 @@
 
     // Initial badge update
     CartBadge.update();
+
+    /* Language passport cleanup: the one-shot order sheet sets
+       nassim_sheet_lang_ok when the customer deliberately reloads it via a
+       language switch. That permission is valid only while the sheet is the
+       current page — clear it on every OTHER page so Back/Forward/refresh
+       can never reuse it to reopen the sheet. */
+    if (location.pathname.indexOf('order-send-modified4.html') === -1) {
+      try { sessionStorage.removeItem('nassim_sheet_lang_ok'); } catch (e) {}
+    }
+
+    /* Completed-order guard chokepoint: EVERY local cart write passes
+       through localStorage.setItem. A write that stores items means the
+       customer deliberately added products — a NEW shopping session, so
+       reopen cart/checkout access. Writes that store an EMPTY cart (order
+       completion, checkout.js) keep the completed-session flag. Badge-only
+       updates (e.g. a logged-in server cart) never touch the flag, so a
+       finished session can't be unlocked by a stale server cart count. */
+    try {
+      var rawSetItem = localStorage.setItem.bind(localStorage);
+      localStorage.setItem = function (key, value) {
+        if (key === "nassim_cart" && typeof value === "string" && value.indexOf('"items":[{"') !== -1) {
+          try { sessionStorage.removeItem("nassim_order_done"); } catch (e2) {}
+        }
+        return rawSetItem(key, value);
+      };
+    } catch (e) {}
 
     // Cross-tab synchronisation
     window.addEventListener("storage", function (e) {
@@ -114,6 +148,19 @@
     window.addEventListener("pageshow", function () {
       CartBadge.update();
     });
+
+    /* Any LINK click that navigates to cart.html (mobile bottom navs, footer
+       links) is likewise a deliberate cart visit: mark the new session and
+       clear the completed-order flag before the navigation happens. Capture
+       phase so this runs even if another handler stops propagation. */
+    document.addEventListener("click", function (e) {
+      var a = e.target && e.target.closest ? e.target.closest('a[href*="cart.html"]') : null;
+      if (!a) return;
+      try {
+        sessionStorage.setItem("nassim_new_cart_session", "1");
+        sessionStorage.removeItem("nassim_order_done");
+      } catch (err) {}
+    }, true);
   }
 
   // Expose globally so other scripts can call NassimCartBadge.update()

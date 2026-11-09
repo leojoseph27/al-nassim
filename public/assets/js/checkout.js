@@ -328,7 +328,7 @@
     var html = '<div class="cs-top">' +
       '<button type="button" id="edit-cart-items-btn" class="cs-edit-btn">' +
         '<span class="material-symbols-outlined" aria-hidden="true">shopping_cart</span>' +
-        '<span>Edit shopping cart items</span>' +
+        '<span>Edit shopping cart products</span>' +
       '</button>' +
       '<div class="cs-divider" aria-hidden="true"></div>' +
       '<div class="cs-total">' +
@@ -444,10 +444,27 @@
         e.preventDefault();
         if (submitting) return; // Prevent double submission
         submitting = true;
+        /* Page-local language handlers read this: switching language while an
+           order is in flight must NOT reload the page (a reload aborts the
+           request and the customer loses the one-time access token). */
+        window.__nassimOrderSubmitting = true;
 
         var btn = document.getElementById("place-order-btn");
         var btnText = btn ? btn.textContent : "";
-        if (btn) { btn.textContent = "Placing Order…"; btn.disabled = true; btn.classList.add("opacity-60", "cursor-not-allowed"); }
+        /* Loading label follows the page language: the storefront i18n runtime
+           translates static markup only — this label is set dynamically, so
+           the active language is read here. */
+        /* The central map (i18n-data.js) is EN→AR and is loaded on both
+           languages — apply its entry only when the Arabic preference is
+           active (same rule the shared i18n runtime uses). */
+        var isAr = false; try { isAr = localStorage.getItem("nassim-lang") === "ar"; } catch (e) {}
+        var placingLabel = "Placing Order…";
+        if (isAr) {
+          var M18N = window.NASSIM_I18N || {};
+          var norm = function (k) { return String(k).normalize("NFC").replace(/s+/g, " ").trim().toLowerCase(); };
+          placingLabel = (M18N[norm("placing order")] || M18N["placing order"]) || placingLabel;
+        }
+        if (btn) { btn.textContent = placingLabel; btn.disabled = true; btn.classList.add("opacity-60", "cursor-not-allowed"); }
 
         // Validate required fields
         var name = (document.getElementById("cust-name") || {}).value || "";
@@ -548,10 +565,50 @@
             }
             // Clear cart
             try { localStorage.setItem(CART_KEY, JSON.stringify({ state: { items: [] } })); } catch (e) {}
+            /* Logged-in customers: the SERVER cart still holds the ordered
+               items. Empty it (same per-item DELETE the cart page uses), or
+               the next account-cart sync (account.js mergeGuestCart) writes
+               the old products straight back into localStorage and the old
+               cart reappears on history restore AND on reload. Fire-and-
+               forget — the order itself is already committed. */
+            try {
+              var loggedIn = window.NassimAccount && window.NassimAccount.getCurrentUser && window.NassimAccount.getCurrentUser();
+              if (loggedIn) {
+                items.forEach(function (i) {
+                  var slug = i.id || i.slug;
+                  if (!slug) return;
+                  fetch("/api/cart?slug=" + encodeURIComponent(slug), { method: "DELETE", credentials: "same-origin" }).catch(function () {});
+                });
+              }
+            } catch (e) {}
             // Update cart badge globally
             if (window.NassimCartBadge) window.NassimCartBadge.update();
             // The order is committed — a future checkout must get a fresh idempotency key.
             clearIdempotencyKey();
+            /* Mark THIS tab's session as completed: cart.html / checkout5.html
+               read this flag and close the finished session (redirect home,
+               refuse bfcache/history restoration). Only set AFTER the backend
+               confirmed success — a failed submission never clears anything. */
+            try { sessionStorage.setItem("nassim_order_done", "1"); } catch (e) {}
+            /* The checkout draft (customer + delivery fields preserved
+               across cart/checkout navigation) is cleared ONLY here — a
+               confirmed successful order. A failed submission keeps it. */
+            try { sessionStorage.removeItem("nassim_checkout_draft"); } catch (e) {}
+            /* A stale "new cart session" marker from before this order must
+               never combine with the fresh flag to unlock old history
+               entries — drop it here so the completed session stays closed. */
+            try { sessionStorage.removeItem("nassim_new_cart_session"); } catch (e) {}
+            /* A completed session must never be resurrected by later
+               fetches. Record the generation: every cart render on this tab
+               compares the live generation against this number and re-empties
+               itself if it is older (covers bfcache restores and any async
+               merge/sync that resolves after the order). */
+            try {
+              var gen = (sessionStorage.getItem("nassim_cart_generation") || "0");
+              gen = String(Number(gen) + 1);
+              sessionStorage.setItem("nassim_order_done_generation", gen);
+              sessionStorage.setItem("nassim_cart_generation", gen);
+            } catch (e) {}
             // Take the customer DIRECTLY to the Order Sent page (rendered by
             // the existing order page) — no intermediate confirmation screen
             // and no tracking step. New guest orders use the signed short
@@ -560,20 +617,41 @@
             // TEMP: routed to the new cart-styled Order Sent page
             // (order-send-modified.html). Previous destination (order-detail.html
             // via shortPath / number+token / id) is kept below for easy restore.
-            var sentTarget = "order-send-modified2.html?number=" + encodeURIComponent(data.data.order.orderNumber) + (data.data.order.accessToken ? "&token=" + encodeURIComponent(data.data.order.accessToken) : "");
+            // A checkout page may override the Order Sent destination by
+            // setting window.NASSIM_ORDER_SENT_TARGET (e.g. checkout5 sends
+            // customers to the redesigned order-send-modified4.html sheet);
+            // pages that don't set it keep the default below.
+            var sentTarget;
+            if (data.data.order.accessToken) {
+              sentTarget = (window.NASSIM_ORDER_SENT_TARGET || "order-send-modified2.html") + "?number=" + encodeURIComponent(data.data.order.orderNumber) + "&token=" + encodeURIComponent(data.data.order.accessToken);
+            } else if (data.data.order.shortPath) {
+              /* Idempotent replay of the SAME submission (e.g. the response was
+                 lost to a reload): the raw token cannot be re-issued — the
+                 stored value is only its hash. The signed /o/{id}-{sig} link
+                 is the existing tokenless customer access mechanism, so use
+                 it instead of opening a sheet that would fail validation. */
+              sentTarget = data.data.order.shortPath;
+            } else {
+              sentTarget = (window.NASSIM_ORDER_SENT_TARGET || "order-send-modified2.html") + "?number=" + encodeURIComponent(data.data.order.orderNumber);
+            }
             /* var sentTarget = data.data.order.shortPath
               ? data.data.order.shortPath
               : data.data.order.accessToken
                 ? "order-detail.html?number=" + encodeURIComponent(data.data.order.orderNumber) + "&token=" + encodeURIComponent(data.data.order.accessToken)
                 : "order-detail.html?id=" + encodeURIComponent(data.data.order.id); */
-            window.location.href = sentTarget;
+            /* Override flow (checkout5): REPLACE the checkout history entry so
+               Back from the confirmation never reopens the completed checkout
+               (the confirmation page's own Back handler then routes to home).
+               Default flow keeps the plain href behaviour. */
+            if (window.NASSIM_ORDER_SENT_TARGET) { window.location.replace(sentTarget); }
+            else { window.location.href = sentTarget; }
           })
           .catch(function () {
             showError("Network error. Please check your connection and try again.");
             resetBtn();
           });
 
-        function resetBtn() { submitting = false; if (btn) { btn.textContent = btnText; btn.disabled = false; btn.classList.remove("opacity-60", "cursor-not-allowed"); } }
+        function resetBtn() { submitting = false; window.__nassimOrderSubmitting = false; if (btn) { btn.textContent = btnText; btn.disabled = false; btn.classList.remove("opacity-60", "cursor-not-allowed"); } }
         function showError(msg, fieldEl) {
           var errEl = document.getElementById("checkout-error");
           if (errEl) {

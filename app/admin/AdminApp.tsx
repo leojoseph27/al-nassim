@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { BackupTab } from "@/app/admin/_components/BackupTab";
 import { MasterDataTab } from "@/app/admin/_components/MasterDataTab";
 import { ProductsTab } from "@/app/admin/_components/ProductsTab";
 import { CustomersTab } from "@/app/admin/_components/CustomersTab";
 import StaffTab from "@/app/admin/_components/StaffTab";
+import { SettingsTab } from "@/app/admin/_components/SettingsTab";
 import { ConfirmDialog } from "@/app/admin/_components/ConfirmDialog";
 
-type Tab = "dashboard" | "products" | "orders" | "master-data" | "customers" | "staff" | "audit-log";
+type Tab = "dashboard" | "products" | "orders" | "master-data" | "customers" | "staff" | "audit-log" | "backup" | "settings";
 
 const TAB_LABELS: Record<Tab, string> = {
   dashboard: "Dashboard",
@@ -17,6 +19,8 @@ const TAB_LABELS: Record<Tab, string> = {
   customers: "Customers",
   staff: "Staff",
   "audit-log": "Audit Log",
+  backup: "Backup & Restore",
+  settings: "Settings",
 };
 
 /* ------------------------------------------------------------------ */
@@ -249,7 +253,7 @@ export default function AdminApp({ initialTab }: { initialTab: Tab }) {
   // Server APIs enforce the real permission split regardless of the tab.
   const allowedTabs: Tab[] =
     role === "ADMIN"
-      ? ["dashboard", "products", "orders", "master-data", "customers", "staff", "audit-log"]
+      ? ["dashboard", "products", "orders", "master-data", "customers", "staff", "audit-log", "backup", "settings"]
       : ["dashboard", "orders", "customers"];
   const activeTab: Tab = allowedTabs.includes(tab) ? tab : "orders";
 
@@ -299,6 +303,8 @@ export default function AdminApp({ initialTab }: { initialTab: Tab }) {
         {activeTab === "customers" && <CustomersTab readOnly={role !== "ADMIN"} />}
         {activeTab === "staff" && <StaffTab />}
         {activeTab === "audit-log" && <AuditLogTab />}
+        {activeTab === "backup" && <BackupTab />}
+        {activeTab === "settings" && <SettingsTab />}
       </main>
       {/* Leaving Products with unsaved form changes asks first. */}
       <ConfirmDialog

@@ -13,7 +13,7 @@
 <link rel="stylesheet" href="/assets/css/tailwind.css?v=20261013c">
 <link rel="stylesheet" href="assets/css/nav-popover-mobile.css?v=10"/>
 <script src="assets/js/nav-popover-mobile.js?v=5" defer></script>
-<link rel="stylesheet" href="assets/css/rtl-overrides.css?v=6"/>
+<link rel="stylesheet" href="assets/css/rtl-overrides.css?v=7"/>
 <style>
 .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
 .glass-nav { background: rgba(247, 249, 255, 0.7); backdrop-filter: blur(20px); }
@@ -33,7 +33,13 @@
 </style>
 <style>
   /* ---- scoped design (this page only) ---- */
-  #os-wrap { background: #FFFFFF; }
+  /* Same body font as order-send-modified4.html / internal-orders2.html
+     (Inter via fonts-local.css): system fallbacks lack true 700/800 cuts
+     and rendered the sheet's bold text as smeared faux-extra-bold. */
+  #os-wrap { background: #FFFFFF; font-family: Inter, sans-serif; }
+  /* Cart count badges in dark mode: same rule as assets/css/dark-overrides.css
+     (this page does not load that shared stylesheet). */
+  html.dark #header-cart-count, html.dark .nassim-cart-badge { background-color: #FFFFFF !important; color: #000000 !important; }
   #os-wrap .os-container { max-width: 1200px; margin: 0 auto; padding: 130px 24px 80px; }
   #os-wrap .os-eyebrow { display: flex; align-items: center; gap: 10px; }
   #os-wrap .os-check { width: 26px; height: 26px; border-radius: 50%; background: #16a34a; color: #fff; display: flex; align-items: center; justify-content: center; }
@@ -70,9 +76,9 @@
   #os-wrap .os-back { text-align: center; margin-top: 40px; }
   #os-wrap .os-btn { display: inline-block; background: #0f172a; color: #fff; padding: 12px 22px; border-radius: 8px; font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; text-decoration: none; }
   /* bottom sections: Delivery Address card + totals box */
-  #os-wrap .os-bottom { display: flex; justify-content: space-between; align-items: flex-start; gap: 40px; flex-wrap: wrap; margin-top: 40px; }
-  #os-wrap .os-bottom .os-card-blue { margin: 0; flex: 1 1 420px; max-width: 520px; }
-  #os-wrap .os-bottom .os-totals { margin: 0; flex: 0 0 420px; max-width: 520px; }
+  #os-wrap .os-bottom { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; flex-wrap: wrap; margin-top: 24px; }
+  #os-wrap .os-bottom .os-card-blue { margin: 0; flex: 0 1 600px; max-width: 620px; }
+  #os-wrap .os-bottom .os-totals { margin: 0; flex: 1 1 320px; max-width: 520px; }
   #os-wrap .os-card-blue { margin-top: 48px; max-width: 520px; background: #eff6ff; border: 1px solid #dbeafe; border-radius: 12px; padding: 22px 24px; }
   #os-wrap .os-card-blue h2 { font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 14px; }
   #os-wrap .os-card-blue .os-line { display: flex; align-items: flex-start; gap: 8px; font-size: 16px; color: #111827; padding: 6px 0; }
@@ -83,6 +89,107 @@
   #os-wrap .os-trow .os-tlabel { font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; font-size: 14px; color: #111827; }
   #os-wrap .os-trow .os-tval { font-weight: 800; color: #0f172a; font-variant-numeric: tabular-nums; }
   #os-wrap .os-btn:hover { background: #1e293b; }
+  /* Notice under the confirmation heading — same design as the notice on
+     order-send-modified4.html / internal-orders2.html (grey container,
+     dark text, compact padding). */
+  #os-wrap .os-important-notice { margin: 18px 0 0; background: #E8F5E9; border-radius: 12px; padding: 14px 18px; color: #1F2937; font-size: 15.4px; line-height: 1.65; }
+  /* RTL row: DOM order icon -> label -> number renders visually as the
+     approved Arabic sheet: number left, label right, icon rightmost. */
+  html.lang-ar #os-wrap .os-meta-row { direction: rtl; }
+  html.lang-ar #os-wrap .os-important-notice { direction: rtl; text-align: right; }
+  @media (min-width: 768px) { html.lang-ar #os-wrap .os-important-notice { font-size: 17.71px; line-height: 1.65; } }
+  /* Payment line inside the notice — same design as order-send-modified4.html:
+     subtle divider above, small wallet icon, bold dark sentence. Flex mirrors
+     automatically under html.lang-ar. */
+  #os-wrap .os-notice-pay { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(31, 41, 55, 0.14); }
+  #os-wrap .os-notice-pay .material-symbols-outlined { font-size: 18px; color: #1F2937; flex: 0 0 auto; }
+  #os-wrap .os-notice-pay-bullet { font-size: 18px; line-height: 1; color: #1F2937; flex: 0 0 auto; }
+  #os-wrap .os-notice-pay-text { font-weight: 700; color: #1F2937; overflow-wrap: anywhere; }
+  /* Arabic: the shared i18n runtime stamps the pay row with its RTL helper
+     classes (nassim-rtl-anchor = margin-left:auto, nassim-rtl-jc-end =
+     justify-content:flex-end), which shove the row/text to the LEFT. The
+     row's own direction:rtl already mirrors it correctly (icon far right,
+     sentence left of it, right-aligned) — so neutralise both helpers. */
+  html.lang-ar #os-wrap .os-notice-pay.nassim-rtl-anchor { margin-left: 0 !important; margin-right: 0 !important; }
+  html.lang-ar #os-wrap .os-notice-pay.nassim-rtl-jc-end { justify-content: flex-start !important; }
+  /* Delivery Address card — compact design matched 1:1 to the latest
+     implementation in order-send-modified4.html / internal-orders2.html:
+     white card, 2px blue-grey border, compact header band with pin tile,
+     one-row Name/Phone with aligned colons and a vertical divider, shaded
+     two-column address box. No side accent bars. Overrides the generic
+     .os-card-blue look for THIS card only (same specificity, later rules). */
+  #os-wrap .os-delivery { background: #FFFFFF; border: 2px solid #D5DFF0; border-radius: 16px; padding: 0; overflow: hidden; box-shadow: 0 2px 12px rgba(15, 23, 42, 0.05); }
+  #os-wrap .os-delivery h2 { margin: 0; font-size: 19.5px; font-weight: 800; color: #0F1E3D; }
+  #os-wrap .os-da-head { display: flex; align-items: center; gap: 12px; background: #EFF4FD; padding: 10px 20px; min-height: 68px; box-sizing: border-box; }
+  #os-wrap .os-da-icon { width: 38px; height: 38px; border-radius: 10px; background: #DCE9FB; color: #2563EB; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+  #os-wrap .os-da-icon .material-symbols-outlined { font-size: 20px; }
+  #os-wrap .os-da-body { padding: 4px 20px 12px; }
+  #os-wrap .os-da-toprow { display: flex; align-items: center; padding: 12px 0 14px; border-bottom: 1px solid #EEF1F7; }
+  #os-wrap .os-da-group { flex: 1 1 0; min-width: 0; display: grid; grid-template-columns: 56px 12px 1fr; column-gap: 5px; align-items: baseline; }
+  #os-wrap .os-da-group + .os-da-group { margin-inline-start: 26px; padding-inline-start: 26px; border-inline-start: 1px solid #E4E8EF; }
+  #os-wrap .os-da-label { font-size: 14px; font-weight: 700; color: #0F1E3D; white-space: nowrap; }
+
+  /* Email/Country row: this row's Arabic label ("البريد الإلكتروني") is far
+     wider than the 56px Name/Phone label track (labels are nowrap) and would
+     overlap the value. The row widens only its own label track so the two
+     groups' colons stay aligned in EN and AR; on small screens these groups
+     stack vertically, where the wider track still fits. Higher specificity
+     than the <=767px 78/64px override, so it wins at every width. */
+  #os-wrap .os-delivery #os-da-email-row .os-da-group { grid-template-columns: minmax(56px, max-content) 12px 1fr; }
+  #os-wrap .os-delivery #os-da-email-row .os-da-value { overflow-wrap: anywhere; }
+  #os-wrap .os-delivery #os-da-email-row .os-da-value { white-space: normal; }
+  #os-wrap .os-da-colon { font-size: 14px; color: #0F1E3D; }
+  #os-wrap .os-da-value { font-size: 14px; font-weight: 400; color: #0F1E3D; white-space: nowrap; overflow: hidden; text-overflow: clip; min-width: 0; }
+  #os-wrap .os-da-box { background: #F2F4F8; border-radius: 12px; padding: 10px 16px; margin-top: 8px; min-height: 132px; display: flex; align-items: stretch; }
+  #os-wrap .os-da-cols { display: flex; align-items: stretch; width: 100%; }
+  #os-wrap .os-da-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+  #os-wrap .os-da-vdiv { width: 1px; background: #DDE3EE; margin: 6px 18px; flex: 0 0 auto; }
+  #os-wrap .os-da-item { display: grid; grid-template-columns: 88px 12px 1fr; column-gap: 5px; align-items: baseline; padding: 7px 0; }
+  #os-wrap .os-da-item .os-da-label, #os-wrap .os-da-item .os-da-colon, #os-wrap .os-da-item .os-da-value { font-size: 13.5px; }
+  html.lang-ar #os-wrap .os-delivery .os-da-head,
+  html.lang-ar #os-wrap .os-delivery .os-da-toprow,
+  html.lang-ar #os-wrap .os-delivery .os-da-group,
+  html.lang-ar #os-wrap .os-delivery .os-da-cols,
+  html.lang-ar #os-wrap .os-delivery .os-da-item { direction: rtl; }
+  html.lang-ar #os-wrap .os-delivery .os-da-value { text-align: right; }
+  /* Arabic totals rows (Delivery Fee / Total): the row mirrors so the Arabic
+     label sits on the RIGHT and the amount cell on the LEFT. The amount cell
+     is forced LTR + isolated: the i18n runtime flattens the amount into a
+     plain "د.ك 0.000" text node and stamps .nassim-rtl on it, which would
+     render the currency to the right of the digits. LTR here keeps د.ك on
+     the LEFT of the number. The anchor margin the runtime adds is
+     neutralised so the label and amount stay on opposite edges. */
+  html.lang-ar #os-wrap .os-trow { direction: rtl; }
+  html.lang-ar #os-wrap .os-trow .os-tval { direction: ltr !important; unicode-bidi: isolate !important; text-align: left !important; white-space: nowrap; }
+  html.lang-ar #os-wrap .os-trow .nassim-rtl-anchor { margin-left: 0 !important; margin-right: 0 !important; }
+  html.lang-ar #os-wrap .os-trow { gap: 16px; }
+  /* Arabic: mirror the bottom row like internal-orders2.html (whose <html>
+     carries dir=rtl): Delivery Address card on the RIGHT, Order Summary on
+     the LEFT, and the summary rows mirrored (label right, amount left).
+     This page only marks html.lang-ar, so the row needs explicit RTL. The
+     mobile stack (column, summary first) is unaffected by direction. */
+  html.lang-ar #os-wrap .os-bottom { direction: rtl; }
+  /* Arabic: neutralise the shared i18n runtime's RTL helper classes inside
+     the Delivery Address card (they stamp the header with jc-end / anchor,
+     pushing the icon+heading to the LEFT). The card's own direction:rtl
+     rules mirror the layout correctly — icon far right, heading left of
+     it; labels far right, colon then value to the left. */
+  html.lang-ar #os-wrap .os-delivery .nassim-rtl-jc-end,
+  html.lang-ar #os-wrap .os-delivery.nassim-rtl-jc-end { justify-content: flex-start !important; }
+  html.lang-ar #os-wrap .os-delivery .nassim-rtl-anchor,
+  html.lang-ar #os-wrap .os-delivery.nassim-rtl-anchor { margin-left: 0 !important; margin-right: 0 !important; }
+  html.lang-ar #os-wrap .os-delivery .nassim-rtl-fi-end { align-items: flex-start !important; }
+
+  /* Tablet: tighten the compact card before anything stacks */
+  @media (min-width: 768px) and (max-width: 1120px) {
+    #os-wrap .os-bottom { gap: 20px; }
+    #os-wrap .os-bottom .os-card-blue { flex: 0 1 540px; max-width: 580px; }
+    #os-wrap .os-delivery .os-da-head { padding: 8px 18px; min-height: 60px; }
+    #os-wrap .os-delivery .os-da-body { padding: 2px 18px 10px; }
+    #os-wrap .os-delivery .os-da-group + .os-da-group { margin-inline-start: 20px; padding-inline-start: 20px; }
+    #os-wrap .os-delivery .os-da-vdiv { margin: 6px 14px; }
+    #os-wrap .os-delivery .os-da-box { padding: 8px 14px; }
+  }
   /* Delivery Address rows — Arabic RTL mirroring (this card only).
      direction:rtl on the flex row mirrors its geometry: the icon sits at
      the RIGHT edge, and the text block (label + separator + value, still
@@ -185,14 +292,29 @@
        inside .os-bottom without touching the DOM order desktop uses) */
     #os-wrap .os-bottom { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
     #os-wrap .os-bottom .os-totals { order: -1; flex: 0 0 auto; width: 100%; max-width: 100%; padding: 14px 18px; }
-    #os-wrap .os-bottom .os-card-blue { order: 0; flex: 0 0 auto; width: 100%; max-width: 100%; margin-top: 0; padding: 18px; }
+    #os-wrap .os-bottom .os-card-blue { order: 0; flex: 0 0 auto; width: 100%; max-width: 100%; margin-top: 0; }
+    #os-wrap .os-bottom .os-card-blue.os-delivery { padding: 0; border-radius: 14px; }
     #os-wrap .os-trow { padding: 10px 0; font-size: 15px; }
     #os-wrap .os-trow .os-tlabel { font-size: 12.5px; }
     /* Total row emphasized, Delivery Fee regular */
     #os-wrap .os-trow + .os-trow .os-tval { font-size: 19px; color: #0f172a; }
 
-    /* delivery address card: full width, comfortable padding, no clipping */
-    #os-wrap .os-card-blue h2 { font-size: 17px; margin: 0 0 10px; }
+    /* delivery address card: full width; Name/Phone and the two address
+       columns stack, the dividers become horizontal, values may wrap */
+    #os-wrap .os-delivery h2 { font-size: 17px; margin: 0; }
+    #os-wrap .os-delivery .os-da-head { padding: 10px 16px; min-height: 0; gap: 12px; }
+    #os-wrap .os-delivery .os-da-icon { width: 40px; height: 40px; border-radius: 10px; }
+    #os-wrap .os-delivery .os-da-icon .material-symbols-outlined { font-size: 22px; }
+    #os-wrap .os-delivery .os-da-body { padding: 4px 16px 12px; }
+    #os-wrap .os-delivery .os-da-toprow { flex-direction: column; align-items: stretch; gap: 7px; padding: 8px 0 10px; }
+    #os-wrap .os-delivery .os-da-group { grid-template-columns: 64px 12px 1fr; }
+    #os-wrap .os-delivery .os-da-group + .os-da-group { margin-inline-start: 0; padding-inline-start: 0; border-inline-start: 0; border-top: 1px solid #EEF1F7; padding-top: 8px; }
+    #os-wrap .os-delivery .os-da-label, #os-wrap .os-delivery .os-da-colon { font-size: 13.5px; }
+    #os-wrap .os-delivery .os-da-value { font-size: 13.5px; white-space: normal; overflow: visible; }
+    #os-wrap .os-delivery .os-da-box { padding: 6px 14px; margin-top: 8px; min-height: 0; }
+    #os-wrap .os-delivery .os-da-cols { flex-direction: column; }
+    #os-wrap .os-delivery .os-da-vdiv { width: auto; height: 1px; margin: 5px 0; }
+    #os-wrap .os-delivery .os-da-item { grid-template-columns: 74px 12px 1fr; padding: 6px 0; }
     #os-wrap .os-card-blue .os-line { font-size: 14px; padding: 5px 0; }
   }
   @media print {
@@ -906,11 +1028,11 @@ html.dark #home5-burger-btn { color: #ffffff; }
      touched, so the active slide is preserved exactly. */
   function chooseLang(v) {
     if (getLang() === v) { closeMenus(); return; }
+    /* SAVE + FULL RELOAD: the order sheet must re-run its whole Arabic/English
+       render from scratch (prices, quantities, RTL direction), so the stored
+       preference is saved and this same /o/ URL reloads — no live DOM swap. */
     try { localStorage.setItem('nassim-lang', v); } catch (e) {}
-    if (window.NassimLang && window.NassimLang.sync) window.NassimLang.sync();
-    try { window.dispatchEvent(new CustomEvent('nassim-langchange', { detail: { lang: v } })); } catch (e) {}
-    try { document.dispatchEvent(new CustomEvent('nassim-langchange', { detail: { lang: v } })); } catch (e) {}
-    syncLang();
+    location.reload();
   }
   function syncLang() {
     var cur = getLang();
@@ -1421,7 +1543,10 @@ html.dark #home5-burger-btn { color: #ffffff; }
           <div id="os-loading" style="display:none;padding:40px 0;text-align:center;color:#64748b;">Loading order…</div>
           <div id="os-error" style="display:none;padding:40px 0;text-align:center;color:#dc2626;font-size:18px;font-weight:600;"></div>
           <div id="os-main" style="display:none;">
-            <h1 class="os-title"><span class="os-check"><span class="material-symbols-outlined">check</span></span>YOUR ORDER HAS BEEN RECEIVED.</h1>
+            <h1 class="os-title"><span class="os-check"><span class="material-symbols-outlined">check</span></span>YOUR ORDER HAS BEEN PLACED.</h1>
+            <div class="os-important-notice">Once the showroom team receives your order, they will contact you to schedule your delivery. They will also prepare your invoice, which will be delivered along with your items.
+              <div class="os-notice-pay"><span class="os-notice-pay-bullet">•</span><span class="os-notice-pay-text">Payment is to be made upon receiving your purchases.</span></div>
+            </div>
                         <div class="os-date"><span class="material-symbols-outlined">calendar_month</span>Date: <span id="os-date"></span></div>
             <div class="os-meta-row">
               <span class="material-symbols-outlined">receipt_long</span>Order Number : <b id="os-number"></b>
@@ -1429,11 +1554,19 @@ html.dark #home5-burger-btn { color: #ffffff; }
             <div id="os-items"></div>
             <div class="os-bottom">
               <div class="os-card-blue os-delivery">
-                <h2>Delivery Address</h2>
-                <div class="os-line"><span class="material-symbols-outlined">person</span><span>Name : <span id="os-name"></span></span></div>
-                <div class="os-line"><span class="material-symbols-outlined">call</span><span>Phone : <span id="os-phone"></span></span></div>
-                <div class="os-line"><span class="material-symbols-outlined">location_on</span><span><span id="os-address-label">Address : </span><span id="os-address"></span></span></div>
-                <div class="os-line" id="os-notes-line" style="display:none"><span class="material-symbols-outlined">sticky_note_2</span><span>Notes : <span id="os-notes"></span></span></div>
+                <div class="os-da-head">
+                  <span class="os-da-icon"><span class="material-symbols-outlined">location_on</span></span>
+                  <h2>Delivery Address</h2>
+                </div>
+                <div class="os-da-body">
+                  <div class="os-da-toprow">
+                    <div class="os-da-group"><span class="os-da-label" id="os-name-label">Name</span><span class="os-da-colon">:</span><span class="os-da-value" id="os-name"></span></div>
+                    <div class="os-da-group"><span class="os-da-label" id="os-phone-label">Phone</span><span class="os-da-colon">:</span><span class="os-da-value" id="os-phone"></span></div>
+                  </div>
+                  <div class="os-da-box" id="os-da-fields"></div>
+                  <div class="os-line" id="os-da-legacy"><span class="material-symbols-outlined">location_on</span><span><span id="os-address-label">Address : </span><span id="os-address"></span></span></div>
+                  <div class="os-line" id="os-notes-line" style="display:none"><span class="material-symbols-outlined">sticky_note_2</span><span>Notes : <span id="os-notes"></span></span></div>
+                </div>
               </div>
               <div class="os-totals">
                 <div class="os-trow"><span class="os-tlabel">Delivery Fee</span><span class="os-tval" id="os-shipping">KWD 0.000</span></div>
@@ -1568,7 +1701,7 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassim-lang") ==
      deferred) so the WhatsApp order sheet can render COMPLETE at parse time
      — see the render script at the bottom of this page. Deferring them would
      delay the sheet behind every deferred script (skeleton flash). -->
-<script src="assets/js/i18n-data.js?v=5"></script>
+<script src="assets/js/i18n-data.js?v=7"></script>
 <script type="module">
   /* Page-local supplement for the Order Sent sheet: wording taken from
      EXISTING approved entries (same as the staff document view). Scoped to
@@ -1951,7 +2084,7 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassim-lang") ==
 }
 </style>
 
-<script src="assets/js/cart-nav.js" defer></script>
+<script src="assets/js/cart-nav.js?v=3" defer></script>
 <script src="assets/js/search.js" defer></script>
 <script src="assets/js/account.js" defer></script>
 <script src="assets/js/nav-submenu.js?v=3" defer></script>
@@ -1963,6 +2096,63 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassim-lang") ==
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function ltr(v) { return '<span dir="ltr" style="unicode-bidi:isolate;">' + v + '</span>'; }
   function fmt(n) { return Number(n).toFixed(3); }
+
+  /* Delivery Address card — structured field rows matching the compact
+     card in order-send-modified4.html / internal-orders2.html. The stored
+     address string and its parsing follow the SAME contract as the shared
+     renderer (assets/js/order-address.js, untouched): known "Label:"
+     prefixes split the comma-joined string; Governorate/Area VALUES
+     resolve through that shared module's resolveLocation (active
+     language); Arabic labels come from the central NASSIM_I18N map only.
+     Orders without labeled fields fall back to the exact legacy display. */
+  var DA_FIELDS = [
+    { key: "Governorate", keys: ["governorate *", "governorate"] },
+    { key: "Area", keys: ["area *", "area"] },
+    { key: "Block", keys: ["block *", "block"] },
+    { key: "Street", keys: ["street *", "street"] },
+    { key: "Building", keys: ["building", "building no."] },
+    { key: "Floor", keys: ["floor"] },
+    { key: "Apartment", keys: ["apartment"] },
+    { key: "Landmark", keys: ["landmark (optional)", "landmark"] }
+  ];
+  function daNorm(s) { return String(s == null ? "" : s).normalize("NFC").replace(/\s+/g, " ").trim().toLowerCase(); }
+  function daArActive() {
+    /* Active-language check that does not race the i18n runtime on initial
+       load: the stored preference is authoritative before document.lang flips. */
+    try { if ((localStorage.getItem("nassim-lang") || "") === "ar") return true; } catch (e) {}
+    return document.documentElement.lang === "ar";
+  }
+  function daLabel(keys, fallback) {
+    if (!daArActive() || !window.NASSIM_I18N) return fallback;
+    for (var i = 0; i < keys.length; i++) {
+      var v = window.NASSIM_I18N[daNorm(keys[i])] || window.NASSIM_I18N[keys[i]];
+      if (v) return v.replace(/\s*\*/g, "").replace(/\s*\([^)]*\)\s*$/, "").replace(/\s*:\s*$/, "").trim();
+    }
+    return fallback;
+  }
+  function renderDaFields(o) {
+    var s = String((o || {}).address || "");
+    var re = new RegExp("(^|,)\\s*(" + DA_FIELDS.map(function (f) { return f.key; }).join("|") + ")\\s*:", "gi");
+    var marks = [], m;
+    while ((m = re.exec(s)) !== null) marks.push({ start: m.index, label: m[2], vs: m.index + m[0].length });
+    var items = [];
+    for (var i = 0; i < marks.length; i++) {
+      var end = i + 1 < marks.length ? marks[i + 1].start : s.length;
+      var v = s.slice(marks[i].vs, end).trim();
+      if (!v) continue;
+      var f = null;
+      for (var j = 0; j < DA_FIELDS.length; j++) if (DA_FIELDS[j].key === marks[i].label) f = DA_FIELDS[j];
+      if (f && (f.key === "Governorate" || f.key === "Area") && window.NassimOrderAddress) {
+        v = window.NassimOrderAddress.resolveLocation(v);
+      }
+      items.push('<div class="os-da-item"><span class="os-da-label">' + esc(f ? daLabel(f.keys, f.key) : marks[i].label) + '</span><span class="os-da-colon">:</span><span class="os-da-value">' + ltr(esc(v)) + '</span></div>');
+    }
+    /* Two columns in stored order — first half left, rest right;
+       subtle vertical divider between. */
+    var half = Math.ceil(items.length / 2);
+    function col(list) { return '<div class="os-da-col">' + list.join("") + '</div>'; }
+    return '<div class="os-da-cols">' + col(items.slice(0, half)) + '<div class="os-da-vdiv"></div>' + col(items.slice(half)) + '</div>';
+  }
   function itemCode(name) {
     var m = String(name || "").match(/al-nassim-([A-Za-z]+-\d+)/i);
     if (m) return m[1];
@@ -1985,18 +2175,24 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassim-lang") ==
     var items = o.items || [];
     document.getElementById("os-count").textContent = items.length;
     var html = "";
+    /* Arabic renders its own quantity / unit-price markup: the value stays
+       bold and the currency is an isolated LTR group so the currency always
+       sits left of the amount. English output is unchanged. */
+    var isAr = daArActive();
     items.forEach(function (i) {
       var lineTotal = Number(i.price) * Number(i.quantity);
       html += '<div class="os-card2">' +
         '<div class="os-img">' + (i.image ? '<img src="' + esc(i.image) + '" alt="' + esc(i.name) + '"/>' : '<span class="material-symbols-outlined">image</span>') + '</div>' +
         '<div class="os-info">' +
         '<h3 class="os-pname">' + esc(i.name) + '</h3>' +
-        '<p class="os-piece">KD ' + fmt(i.price) + '/<span>piece</span></p>' +
+        '<p class="os-piece"' + (isAr ? ' dir="ltr"' : '') + '>' + (isAr
+          ? '<span style="direction:ltr;unicode-bidi:isolate;">د.ك‎ '+ fmt(i.price) + '</span> / <span>قطعة</span>'
+          : 'KD '+ fmt(i.price) + '/<span>piece</span>') + '</p>' +
         '<p class="os-pcode" data-slug="' + esc(i.slug || '') + '">Code/MODEL : ' + ltr(esc(itemCode(i.name) || slugCode(i.slug) || "\u2014")) + '</p>' +
-        '<p class="os-meta-qty">Quantity: ' + i.quantity + '</p>' +
+        '<p class="os-meta-qty">' + (isAr ? 'الكمية: ' : 'Quantity: ') + '<b>' + i.quantity + '</b></p>' +
         '</div>' +
         '<div class="os-meta">' +
-        '<p class="os-total-top">KD ' + fmt(lineTotal) + '</p>' +
+        '<p class="os-total-top">' + (isAr ? '<span style="direction:ltr;unicode-bidi:isolate;">د.ك‎ ' + fmt(lineTotal) + '</span>' : 'KD ' + fmt(lineTotal)) + '</p>' +
         '</div>' +
         '</div>';
     });
@@ -2005,14 +2201,66 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassim-lang") ==
        Fee KWD 0.000 and Total = the sum of the item line totals. */
     var runningTotal = 0;
     items.forEach(function (i) { runningTotal += Number(i.price) * Number(i.quantity); });
-    document.getElementById("os-total").textContent = "KWD " + fmt(runningTotal);
-    document.getElementById("os-shipping").textContent = "KWD 0.000";
+    document.getElementById("os-total").innerHTML = isAr ? '<span style="direction:ltr;unicode-bidi:isolate;">د.ك‎ ' + fmt(runningTotal) + '</span>' : "KWD " + fmt(runningTotal);
+    document.getElementById("os-shipping").innerHTML = isAr ? '<span style="direction:ltr;unicode-bidi:isolate;">د.ك‎ 0.000</span>' : "KWD 0.000";
     document.getElementById("os-name").textContent = o.customerName || "";
+    document.getElementById("os-name-label").textContent = daLabel(["Name :", "name :", "name"], "Name");
     document.getElementById("os-phone").innerHTML = ltr(esc(window.NassimOrderAddress ? window.NassimOrderAddress.formatPhone(o.customerPhone) : (o.customerPhone || "")));
-    /* Delivery address via the SHARED renderer (assets/js/order-address.js):
-       the stored Governorate/Area values appear as labeled rows at the top;
-       historical addresses without labels keep the exact previous display. */
+    document.getElementById("os-phone-label").textContent = daLabel(["phone", "phone :"], "Phone");
+
+    /* Email and Country render INDEPENDENTLY: each field appears only when its
+       own value exists, and the presence of one never affects the other.
+       Email comes from the order (customerEmail, optional at checkout).
+       Country comes from the order data (country) when present, otherwise from
+       the checkout country selector value carried on the phone input
+       (data-cname); checkout requires a country and offers Kuwait only.
+       Rendered in the same os-da-group style as Name/Phone; when only one of
+       the two exists its group fills the row (no blank placeholder). */
+    var daEmail = String((o || {}).customerEmail || "").trim();
+    var daCountry = String((o || {}).country || "").trim();
+    try {
+      var daPhoneEl = document.getElementById("cust-phone");
+      if (daPhoneEl && daPhoneEl.getAttribute("data-cname")) daCountry = daPhoneEl.getAttribute("data-cname");
+    } catch (e) {}
+    var daTop = document.querySelector(".os-delivery .os-da-toprow");
+    if (daTop) {
+      var daEmailRow = document.getElementById("os-da-email-row");
+      var daHtml = "";
+      if (daEmail) daHtml +=
+
+        '<div class="os-da-group"><span class="os-da-label" id="os-email-label">Email</span><span class="os-da-colon">:</span><span class="os-da-value" id="os-email"></span></div>';
+      if (daCountry) daHtml +=
+
+        '<div class="os-da-group"><span class="os-da-label" id="os-country-label">Country</span><span class="os-da-colon">:</span><span class="os-da-value" id="os-country"></span></div>';
+      if (daHtml) {
+        if (!daEmailRow) {
+          daEmailRow = document.createElement("div");
+          daEmailRow.id = "os-da-email-row";
+          daEmailRow.className = "os-da-toprow";
+          daEmailRow.style.borderTop = "none";
+          daTop.parentNode.insertBefore(daEmailRow, daTop.nextSibling);
+        }
+        daEmailRow.innerHTML = daHtml;
+        if (daEmail) {
+          document.getElementById("os-email").innerHTML = ltr(esc(daEmail));
+          document.getElementById("os-email-label").textContent = daLabel(["email (optional)", "email"], "Email");
+        }
+        if (daCountry) {
+          document.getElementById("os-country").textContent = daArActive() ? "الكويت" : daCountry;
+          document.getElementById("os-country-label").textContent = daLabel(["country *", "country"], "Country");
+        }
+      } else if (daEmailRow) {
+        daEmailRow.parentNode.removeChild(daEmailRow);
+      }
+    }
+    /* Delivery Address card rows. Structured (labeled) orders render as
+       compact label/value rows via the page-local renderer above; legacy
+       free-text orders keep the exact previous display. Values render
+       exactly as stored — nothing derived. */
     var addrStructured = window.NassimOrderAddress && window.NassimOrderAddress.isStructured(o);
+    document.getElementById("os-da-fields").style.display = addrStructured ? "" : "none";
+    document.getElementById("os-da-fields").innerHTML = addrStructured ? renderDaFields(o) : "";
+    document.getElementById("os-da-legacy").style.display = addrStructured ? "none" : "";
     document.getElementById("os-address-label").style.display = addrStructured ? "none" : "";
     document.getElementById("os-address").innerHTML = window.NassimOrderAddress
       ? window.NassimOrderAddress.renderHtml(o)

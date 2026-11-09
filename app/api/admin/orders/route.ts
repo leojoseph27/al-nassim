@@ -63,6 +63,7 @@ function serializeOrder(o: {
     price: unknown;
     quantity: number;
     itemStatus: string;
+    product?: { sku: string } | null;
   }[];
 }) {
   return {
@@ -94,6 +95,12 @@ function serializeOrder(o: {
       price: Number(i.price),
       quantity: i.quantity,
       itemStatus: i.itemStatus,
+      // Authoritative Code/MODEL from the linked catalogue product. Order
+      // items only snapshot the product NAME, and the staff page's name-
+      // based extraction fails on names that don't embed the code cleanly
+      // (e.g. a space before the code, or multi-code names). The stored
+      // value is used verbatim; never invented.
+      code: (i.product?.sku || '').trim(),
     })),
   };
 }
@@ -140,7 +147,7 @@ export async function GET(req: NextRequest) {
     prisma.order.count({ where }),
     prisma.order.findMany({
       where,
-      include: { items: true },
+      include: { items: { include: { product: { select: { sku: true } } } } },
       orderBy: { id: "desc" },
       skip: (page - 1) * limit,
       take: limit,
@@ -179,14 +186,14 @@ export async function PATCH(req: NextRequest) {
     const updated = await prisma.order.update({
       where: { id: parsed.data.id },
       data: { whatsappSent: parsed.data.whatsappSent },
-      include: { items: true },
+      include: { items: { include: { product: { select: { sku: true } } } } },
     });
     return NextResponse.json({ success: true, data: { order: serializeOrder(updated) }, error: null });
   }
 
   const existing = await prisma.order.findUnique({
     where: { id: parsed.data.id },
-    include: { items: true },
+    include: { items: { include: { product: { select: { sku: true } } } } },
   });
   if (!existing) {
     return NextResponse.json({ success: false, data: null, error: "Order not found" }, { status: 404 });
@@ -245,7 +252,7 @@ export async function PATCH(req: NextRequest) {
           status: toStatus,
           statusHistory: { create: { status: toStatus, note: parsed.data.note } },
         },
-        include: { items: true },
+        include: { items: { include: { product: { select: { sku: true } } } } },
       });
 
       await tx.auditLog.create({

@@ -83,6 +83,16 @@ const nextConfig = {
         ],
       },
       {
+        // Order confirmation sheet: ONE-SHOT view. never cached and never
+        // bfcache-restored — Chrome and Safari both disable the back/forward
+        // cache for no-store documents, so Back/Forward can never resurrect
+        // the old DOM and every load fetches the current guard script.
+        source: "/order-send-modified4.html",
+        headers: [
+          { key: "Cache-Control", value: "no-store, must-revalidate" },
+        ],
+      },
+      {
         // Service worker (staff Web Push): always revalidate so staff devices
         // pick up sw.js updates immediately; explicit root scope.
         source: "/sw\\.js",

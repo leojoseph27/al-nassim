@@ -139,15 +139,15 @@ window.NASSIM_I18N = {
  "price range (kd)": "نطاق السعر (.د.ك)",
  "back to home page": "العودة إلى الصفحة الرئيسية",
  "back to home": "العودة إلى الصفحة الرئيسية",
- "by clicking “submit your order,” you agree to our": "بالنقر على \"إرسال طلبيتك\"، فإنك توافق على ",
+ "by clicking “submit your order,” you agree to our": "بالنقر على \"أرسل طلبك\"، فإنك توافق على ",
  "terms and conditions": "الشروط والأحكام",
  "and": " و",
  "privacy policy": "سياسة الخصوصية",
  ".": " الخاصة بنا.",
  "back to cart": "العودة إلى سلة التسوق",
  "continue with your order": "تابع طلبك",
- "please provide your delivery details.": "يرجى إدخال تفاصيل التوصيل الخاصة بك.",
- "products": "منتجات",
+ "please provide your delivery details.": "يرجى إدخال تفاصيل التوصيل الخاصة بك",
+ "products": "المنتجات",
  "no products found.": "لم يتم العثور على أي منتجات.",
  "price: low to high": "السعر: من الأقل إلى الأعلى",
  "price: high to low": "السعر: من الأعلى إلى الأقل",
@@ -269,7 +269,7 @@ window.NASSIM_I18N = {
  "pallets": "منصات التحميل",
  "heavy duty rack": "رف حديد شديد التحمل",
  "code/model:": "الكود/الموديل",
- "subtotal kd": "المجموع الفرعي د.ك",
+ "subtotal kd": "المجموع الفرعي",
  "free": "مجاني",
  "total kd": "الإجمالي د.ك",
  "total": "الإجمالي",
@@ -299,9 +299,11 @@ window.NASSIM_I18N = {
  "apartment": "الشقة",
  "apt no.": "رقم الشقة",
  "landmark (optional)": "علامة مميزة (اختياري)",
- "e.g. next to al hamra tower": "مثال: بجوار برج الحمراء",
+ "e.g. next to al hamra tower": "بالقرب من ...",
+ "next to ...": "بالقرب من ...",
  "delivery notes": "ملاحظات التوصيل",
  "send order": "ارسل الطلبية",
+ "placing order": "إرسال الطلب...",
  "qty: 2": "الكمية: 2",
  "kd": "د.ك",
  "payment method cash on delivery": "طريقة الدفع: الدفع عند الاستلام",
@@ -311,6 +313,7 @@ window.NASSIM_I18N = {
  "your order has been received!": "تم استلام طلبك!",
  "your order has been sent": "تم إرسال طلبيتك",
  "your order has been received.": "تم استلام طلبك.",
+ "your order has been placed.": "تم تقديم طلبك",
  "please click the link below to view your order and carefully read the important notice, which explain how your order will be processed and finalized.": "يرجى النقر على الرابط أدناه لرؤية طلبك وقراءة الإشعار المهم بعناية، والذي يشرح كيفية معالجة طلبك وإتمامه.",
  "we only accept orders above 5 kd.": "نقبل فقط الطلبات التي تزيد قيمتها عن 5 د.ك.",
  "free delivery": "التوصيل مجاني",
@@ -343,6 +346,21 @@ window.NASSIM_I18N = {
  "piece": "قطعة",
  "delivery fee": "رسوم التوصيل",
  "unit price": "سعر الوحدة",
+ /* checkout4.html Order Summary panel labels */
+ "edit shopping cart products": "تعديل منتجات سلة التسوق",
+ "subtotal": "المجموع الفرعي",
+ "hide summary": "إخفاء الملخص",
+ "show summary": "عرض الملخص",
+ /* checkout4.html address fields (migrated from the page's local addendum) */
+ "country *": "الدولة *",
+ "building *": "المبنى *",
+ "floor *": "الطابق *",
+ "e.g. 3, 3a, g1, mezzanine": "مثال: 3، 3A، G1، Mezzanine",
+ /* checkout4.html store notices (migrated from the page's local addendum) */
+ "payment is to be made upon receiving your purchases.": "يتم الدفع عند استلام مشترياتك.",
+ "after submitting your order, our showroom team will contact you to confirm product availability, make any necessary changes to your order, and schedule delivery.": "بعد تقديم طلبك، سيتواصل معك فريق صالة العرض لدينا لتأكيد توفر المنتجات، وإجراء أي تعديلات ضرورية على طلبك، وتحديد موعد التوصيل.",
+ "then the invoice will be prepared at the showroom and handed to you along with your purchases.": "بعد ذلك، سيتم إعداد الفاتورة في صالة العرض وتسليمها إليك مع مشترياتك.",
+ "once the showroom team receives your order, they will contact you to schedule your delivery. they will also prepare your invoice, which will be delivered along with your items.": "بمجرد استلام فريق صالة العرض لطلبك، سيتواصلون معك لتحديد موعد التوصيل. كما سيقومون بإعداد فاتورتك، والتي سيتم توصيلها مع مشترياتك",
  "important notice: our store team will contact you to confirm product availability and any required order changes before finalizing your order, after which the invoice will be issued at the store’s point of sale and provided with your goods upon delivery.": "اشعار هام : سيتصل بك فريق المتجر لدينا لتأكيد توفر المنتجات وأي تغييرات مطلوبة في الطلب قبل إتمام طلبك، وبعد ذلك سيتم إصدار الفاتورة في نقطة البيع بالمتجر وتقديمها مع بضائعك عند التسليم.",
  "important notice:": "اشعار هام:",
  "our store team will contact you to confirm product availability, make any necessary changes to your order, and schedule delivery.": "سيتواصل معك فريق المتجر لتأكيد توفر المنتجات، وإجراء أي تعديلات ضرورية على طلبك، وتحديد موعد التسليم",
@@ -806,7 +824,7 @@ window.NASSIM_I18N_REVERSE = {
  " الخاصة بنا.": [
   "."
  ],
- "بالنقر على \"إرسال طلبيتك\"، فإنك توافق على ": [
+ "بالنقر على \"أرسل طلبك\"، فإنك توافق على ": [
   "By clicking “Submit Your Order,” you agree to our"
  ],
  "منتجات": [
@@ -1049,6 +1067,9 @@ window.NASSIM_I18N_REVERSE = {
  "ملخص الطلب": [
   "Order Summary"
  ],
+ "تعديل منتجات سلة التسوق": [
+  "Edit Shopping Cart Products"
+ ],
  "المجموع الفرعي 25.000 د.ك": [
   "Subtotal KD 25.000"
  ],
@@ -1205,7 +1226,9 @@ window.NASSIM_I18N_REVERSE = {
  "سيتم إعداد الفاتورة في المتجر وتسليمها لك مع مشترياتك": [
   "The invoice will be prepared at the store and handed to you along with your purchases."
  ],
- "اشعار هام:": [
+ "بمجرد استلام فريق صالة العرض لطلبك، سيتواصلون معك لتحديد موعد التوصيل. كما سيقومون بإعداد فاتورتك، والتي سيتم توصيلها مع مشترياتك": [
+  "Once the showroom team receives your order, they will contact you to schedule your delivery. They will also prepare your invoice, which will be delivered along with your items."
+ ], "اشعار هام:": [
   "Important Notice:"
  ]
 };

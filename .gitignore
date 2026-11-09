@@ -77,3 +77,35 @@ public/topcar/grid/*-old-backup.webp
 # product-image migration runtime artifacts (local only)
 scripts/product-image-migration-manifest.json
 scripts/product-image-migration.log
+
+# ===== Local temp/backup artifacts (2026-11-09 sweep) =====
+# Root diagnostic screenshots and local order-dump JSONs
+/arabic-*.png
+/diagnostic-*.png
+/order-backup-*.json
+/backups/
+/reset-orders.cjs
+# In-page temp scripts and scratch files
+/public/.tmp
+/public/.fix*.js
+/public/test-m-diagnostic.html
+/public/test-noto.html
+# Backup copies of edited pages/scripts
+*.bak-navfix
+*.bak-yml
+*.bak-dropdownscroll
+*.bak-picnic
+*.bak-width
+*.bak-logo15
+*.bak-navfont
+/public/_navport-backup-20261025/
+# Broken duplicate filenames created by an editor (private-use char suffix)
+*.html?
+# Old local page copies superseded by the active versions
+/public/previous cart.html
+/public/ikea style checkout3.html
+/public/checkout4 with seperate container.html
+# Broken duplicate filenames created by an editor (private-use char suffix,
+# 3 UTF-8 bytes per char — hence the byte-count wildcards)
+*.html???
+*.html????

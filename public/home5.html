@@ -17,8 +17,8 @@
 <link rel="stylesheet" href="assets/css/nav-popover-mobile.css?v=10"/>
 <script src="assets/js/nav-popover-mobile.js?v=5" defer></script>
 <link rel="stylesheet" href="assets/css/home5-mobile.css?v=4">
-<link rel="stylesheet" href="assets/css/dark-overrides.css?v=nw1102">
-<link rel="stylesheet" href="assets/css/rtl-overrides.css?v=6"/>
+<link rel="stylesheet" href="assets/css/dark-overrides.css?v=nw1108">
+<link rel="stylesheet" href="assets/css/rtl-overrides.css?v=7"/>
 <!-- Preload only the scripts the INITIAL mobile viewport needs: theme,
      language, dark-mode, the top/bottom nav builders, cart badge, search
      and account state. product-nav.js / listing-pagination.js /
@@ -35,7 +35,7 @@
 <link rel="preload" as="script" href="assets/js/i18n-data.js?v=5"/>
 <link rel="preload" as="script" href="assets/js/i18n.js?v=2"/>
 <link rel="preload" as="script" href="assets/js/dark-overrides.js?v=20261030b"/>
-<link rel="preload" as="script" href="assets/js/cart-nav.js"/>
+<link rel="preload" as="script" href="assets/js/cart-nav.js?v=3"/>
 <link rel="preload" as="script" href="assets/js/search.js"/>
 <link rel="preload" as="script" href="assets/js/account.js"/>
 <link rel="preload" as="script" href="assets/js/mobile-nav.js"/>
@@ -1210,6 +1210,40 @@
             perspective: none !important;
         }
     }
+
+    /* ==================== TABLET PORTRAIT (iPad) — category image focal points ====================
+       Tailwind's md: variant in this build is `(min-width: 768px) and
+       (orientation: landscape)`, so a portrait iPad (744–1024px wide: Mini 744,
+       standard 768, Air 820, Pro 11 834, Pro 13 1024) renders the MOBILE bento
+       above, not the desktop grid. Its cards are much wider there (≈350–490 ×
+       140–150px vs ≈170 × 145px on a phone), so the square images are
+       cover-cropped to ~40% of their height, and the phone-tuned y=100% anchors
+       showed only the empty floor at the bottom.
+       This block re-centres the crop for portrait ≥600px. The floor matters:
+       iPad Mini portrait is 744px, BELOW the 768px md: breakpoint, so the old
+       min-width:768px version left it on the phone values. 600px keeps every
+       iPad portrait width covered continuously (744–1024) while staying above
+       all phone widths (standard phones are ≤480 CSS px), so phone positioning
+       is untouched. Landscape tablets/desktop use the desktop grid, which this
+       selector does not touch. Same selectors + !important as the mobile block
+       above and declared later, so these values win. */
+    @media (min-width: 600px) and (orientation: portrait) {
+        #categories-grid .grid.grid-cols-2.md\:hidden img[alt="Houseware"] {
+            object-position: 50% 50% !important;
+        }
+        #categories-grid .grid.grid-cols-2.md\:hidden img[alt="Supermarket"] {
+            object-position: 50% 45% !important;
+        }
+        #categories-grid .grid.grid-cols-2.md\:hidden img[alt="Warehouse"] {
+            object-position: 50% 50% !important;
+        }
+        #categories-grid .grid.grid-cols-2.md\:hidden img[alt="Packaging"] {
+            object-position: 50% 50% !important;
+        }
+        #categories-grid .grid.grid-cols-2.md\:hidden img[alt="Cooling Rooms"] {
+            object-position: 50% 50% !important;
+        }
+    }
     </style>
 <style>
         /* Loading Screen Styles now live WITH the splash markup at the top of
@@ -2017,7 +2051,7 @@ html.lang-ar #categories-grid a {
 <div class="row-span-2 min-h-[300px] md:col-span-5 md:row-span-4 group relative overflow-hidden rounded-xl reveal-on-scroll transition-all duration-700">
 <div class="absolute inset-0 bg-primary z-0"></div>
 <!-- mobile uses the dedicated houseware image; tablet/desktop (md+) keep the original -->
-<picture><source media="(max-width: 767px), (orientation: portrait)" srcset="topcar/grid/houseware-mobile.webp?v=4"/><img loading="lazy" alt="Houseware" class="absolute inset-0 w-full h-full object-cover grayscale transition-transform duration-[2s] group-hover:scale-110 group-hover:grayscale-0" src="topcar/grid/houseware.webp?v=8" decoding="async"/></picture>
+<picture><source media="(min-width: 600px) and (orientation: portrait)" srcset="topcar/homeware.webp?v=9"/><source media="(max-width: 767px), (orientation: portrait)" srcset="topcar/grid/houseware-mobile.webp?v=4"/><img loading="lazy" alt="Houseware" class="absolute inset-0 w-full h-full object-cover grayscale transition-transform duration-[2s] group-hover:scale-110 group-hover:grayscale-0" src="topcar/grid/houseware.webp?v=8" decoding="async"/></picture>
 <div class="absolute left-3 bottom-3 z-10 pointer-events-none max-w-[92%]"><h4 class="font-headline text-[13px] font-extrabold text-white uppercase tracking-wide leading-tight" style="text-shadow:0 1px 6px rgba(0,0,0,0.6)">HOUSEWARE EQUIPMENT</h4></div>
 <div class="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-80 hidden"></div>
 <!-- Overlays -->
@@ -3168,6 +3202,7 @@ section.cp-hero {
             if (cartBtn) cartBtn.addEventListener('click', function () {
                 window.location.href = 'cart.html';
             });
+                try { sessionStorage.setItem('nassim_new_cart_session', '1'); sessionStorage.removeItem('nassim_order_done'); } catch (e) {}
 
             // Cart badge: #header-cart-count is synced by cart-nav.js. We only
             // toggle its visibility based on the synced value (presentation only).
@@ -3216,7 +3251,7 @@ section.cp-hero {
 </a>
 <script src="assets/js/theme.js" defer></script>
 <script src="assets/js/dark-overrides.js?v=20261030b" defer></script>
-<script src="assets/js/cart-nav.js" defer></script>
+<script src="assets/js/cart-nav.js?v=3" defer></script>
 <script src="assets/js/product-nav.js" defer></script>
 <script src="assets/js/listing-pagination.js?v=4" defer></script>
 <script src="assets/js/search.js" defer></script>

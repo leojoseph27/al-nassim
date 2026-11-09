@@ -1,0 +1,3059 @@
+<!DOCTYPE html>
+<html class="light" lang="en" translate="no">
+<head>
+<meta name="google" content="notranslate"/>
+<script>
+/* Language bootstrap — runs synchronously BEFORE first paint.
+   Reads the saved language (localStorage['nassim-lang']) and establishes the
+   initial language state immediately. Arabic loads are kept in a neutral
+   'lang-pending' state (page not yet visible) until the existing i18n system
+   (assets/js/i18n.js, deferred) finishes its translation pass, so the customer
+   can never see the untranslated English page. English loads are unaffected. */
+(function () {
+  try {
+    var h = document.documentElement;
+    if ((localStorage.getItem("nassim-lang") || "en") === "ar") {
+      h.setAttribute("lang", "ar");
+      h.classList.add("lang-ar");
+      var st = document.createElement("style");
+      st.id = "nassim-lang-pending-style";
+      st.textContent = "html.lang-pending body { visibility: hidden !important; }";
+      document.head.appendChild(st);
+      h.classList.add("lang-pending");
+      var revealed = false;
+      var reveal = function () { if (!revealed) { revealed = true; h.classList.remove("lang-pending"); } };
+      /* i18n.js applies Arabic synchronously during DOMContentLoaded (its init
+         runs before these timers), so the first timer after DCL reveals the
+         already-translated page. window.load and a 6s failsafe are backups. */
+      document.addEventListener("DOMContentLoaded", function () { setTimeout(reveal, 30); });
+      window.addEventListener("load", reveal);
+      setTimeout(reveal, 6000);
+    } else {
+      h.setAttribute("lang", "en");
+      h.classList.remove("lang-ar");
+    }
+  } catch (e) {}
+})();
+</script>
+<script>
+/* ==== ONE-SHOT ORDER CONFIRMATION GUARD (order-send-modified4) ===========
+   This sheet is a temporary post-checkout confirmation. Once the customer
+   LEAVES it, it must never be displayed again:
+
+     - Browser Back from the sheet goes to the ACTUAL previous page: the
+       checkout page replaced itself when redirecting here
+       (checkout.js location.replace), so no extra history entries are
+       pushed and no Back/Forward loop is possible.
+     - Forward / bfcache restore (Chrome AND mobile Safari fire pageshow
+       with event.persisted) -> immediately replaced with cart.html.
+     - Refresh, or reopening the old URL later (even a new tab/session —
+       the marker is localStorage, not sessionStorage) -> replaced with
+       cart.html before the sheet can render.
+
+   The order's DATA is not merely hidden: the redirect REPLACES the
+   document, so no order details remain in the DOM. The separate customer
+   tracking page /o/{id}-{signature} keeps its own access rules and is
+   untouched. First display right after a successful submission is never
+   blocked — the marker is written by THIS load only. */
+(function () {
+  'use strict';
+  if (!/[?&](number|id)=/.test(location.search)) return; // not an order view
+  var mParam = decodeURIComponent((location.search.match(/[?&](?:number|id)=([^&]*)/) || [])[1] || '');
+  if (!mParam) return;
+  var LS_KEY = 'nassim_order_sheet_seen';
+  var MAX_ENTRIES = 20;
+  var LANG_PASS_KEY = 'nassim_sheet_lang_reload';
+  var LANG_OK_KEY = 'nassim_sheet_lang_ok';
+
+  /* Intentional language-switch reload: chooseLang() passports the EXACT
+     query string before reloading. A matching passport allows this ONE
+     reload of the same sheet; it is consumed immediately here, and the ok
+     flag is cleared by cart-nav.js as soon as the customer leaves to any
+     other page — so it can never validate a later refresh, a different URL,
+     or a Back/Forward restore. */
+  try {
+    var pass = sessionStorage.getItem(LANG_PASS_KEY);
+    if (pass !== null) {
+      sessionStorage.removeItem(LANG_PASS_KEY);
+      if (pass === location.search) sessionStorage.setItem(LANG_OK_KEY, location.search);
+    }
+  } catch (e) {}
+  function langOk() {
+    try { return sessionStorage.getItem(LANG_OK_KEY) === location.search; } catch (e) { return false; }
+  }
+
+  function seenBefore() {
+    try {
+      var map = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+      if (map[mParam]) return true;
+    } catch (e) {}
+    // legacy marker from the previous sessionStorage implementation
+    try { if (sessionStorage.getItem('nassim_order_sheet_seen') === mParam) return true; } catch (e) {}
+    return false;
+  }
+  function markSeen() {
+    try {
+      var map = {};
+      try { map = JSON.parse(localStorage.getItem(LS_KEY) || '{}') || {}; } catch (e) {}
+      map[mParam] = Date.now();
+      var keys = Object.keys(map);
+      if (keys.length > MAX_ENTRIES) {
+        keys.sort(function (a, b) { return map[a] - map[b]; });
+        keys.slice(0, keys.length - MAX_ENTRIES).forEach(function (k) { delete map[k]; });
+      }
+      localStorage.setItem(LS_KEY, JSON.stringify(map));
+    } catch (e) {}
+  }
+  function leave() {
+    // Replace, not assign: cart.html takes over this history entry, so the
+    // sheet is unreachable in every direction and Back continues normally.
+    document.documentElement.style.visibility = 'hidden'; // never flash old data
+    location.replace('cart.html');
+  }
+
+  if (seenBefore() && !langOk()) { leave(); return; }
+  if (langOk()) { markSeen(); } // language-switch reload: keep sheet visible
+  markSeen(); // first (and only) legitimate display — mark IMMEDIATELY
+
+  /* The language authorisation is valid for THIS page instance ONLY. It is
+     consumed the moment the customer departs (pagehide fires on every
+     navigation, including bfcache suspension) — the previous cleanup lived
+     in cart-nav.js on OTHER pages, and a bfcache restore of that page never
+     re-runs its scripts, so the stale ok-flag survived and Back/Forward
+     re-validated against it. Clearing here restores the original
+     protection without touching the language passport contract. */
+  window.addEventListener('pagehide', function () {
+    try { sessionStorage.removeItem(LANG_OK_KEY); } catch (e) {}
+  });
+
+  window.addEventListener('pageshow', function (e) {
+    // BFCache restore in any browser (incl. mobile Safari): the cached DOM
+    // must never reappear — replace the document with the cart.
+    if (e.persisted) { leave(); }
+  });
+})();
+</script>
+<script>
+/* Passport EVERY NassimLang.toggle() reload on this sheet (the wired
+   EN|AR buttons call it on desktop AND mobile). Without the passport the
+   one-shot guard treats the language reload as an unexplained revisit and
+   redirects to cart.html. Same contract as the desktop chooseLang(). */
+(function () {
+  'use strict';
+  function wrap() {
+    if (!window.NassimLang || window.NassimLang.__sheetPassport) return;
+    var nl = window.NassimLang;
+    nl.toggle = function () {
+      var next = this.get() === 'ar' ? 'en' : 'ar';
+      try { localStorage.setItem('nassim-lang', next); } catch (e) {}
+      try { sessionStorage.setItem('nassim_sheet_lang_reload', location.search); } catch (e) {}
+      location.reload(); // guard consumes the passport and keeps the sheet
+    };
+    nl.__sheetPassport = true;
+  }
+  if (!wrap()) {
+    document.addEventListener('DOMContentLoaded', wrap);
+    window.addEventListener('load', wrap);
+  }
+})();
+</script>
+<script>function __nassimThemeInit(){try{var s=localStorage.getItem("color-theme");var d=s==="dark"; // default is ALWAYS light unless the visitor explicitly saved dark
+ document.documentElement.classList.toggle("dark",d);document.documentElement.classList.toggle("light",!d);}catch(e){document.documentElement.classList.add("light");}}__nassimThemeInit();</script>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<link rel="icon" href="/LOGO.png" type="image/png"/>
+<title>Shopping Cart | AL-NASSIM</title>
+<link rel="preload" href="/assets/fonts/MaterialSymbolsOutlined-var.woff2" as="font" type="font/woff2" crossorigin/>
+<link rel="preload" href="/assets/fonts/Inter-400-UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2" as="font" type="font/woff2" crossorigin/>
+<link rel="preload" href="/assets/fonts/Manrope-800-xn7gYHE41ni1AdIRggexSg.woff2" as="font" type="font/woff2" crossorigin/>
+<link rel="stylesheet" href="/assets/css/fonts-local.css?v=20261013"/>
+<script></script>
+<link rel="stylesheet" href="assets/css/rtl-overrides.css?v=7"/>
+<script src="assets/js/i18n-data.js?v=7" defer></script>
+<script src="assets/js/product-name.js?v=1"></script>
+<script src="assets/js/i18n.js?v=3" defer></script>
+<script src="assets/js/nassim-locations-data.js" defer></script>
+<script src="assets/js/order-address.js?v=2" defer></script>
+
+<style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
+        .material-symbols-outlined.filled { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .glass-nav { background: rgba(247, 249, 255, 0.7); backdrop-filter: blur(20px); }
+        .dark .glass-nav { background: rgba(10, 15, 20, 0.9); }
+        .dark-glass-dropdown { background: rgba(247, 249, 255, 0.96); backdrop-filter: blur(20px); border: 1px solid rgba(0, 3, 8, 0.1); border-radius: 1rem; }
+        .dark .dark-glass-dropdown { background: rgba(255, 255, 255, 0.98); }
+        .dark .dark-glass-dropdown a { color: #111d27 !important; }
+        .dark .dark-glass-dropdown a:hover { color: #825335 !important; }
+        /* Dropdown show/hide is now JS-driven (250ms close delay) */
+        .dropdown-menu { opacity: 0; visibility: hidden; transform: translateY(10px); }
+        /* Department hover dropdown submenu labels: one line each, matching
+           checkout5.html. Without this the 16px default wraps labels onto
+           two lines inside the 256px container (208px after p-6 padding).
+           Pin the reference typography and forbid wrapping (desktop only;
+           the mobile drawer builds its own markup outside nav.glass-nav
+           and is untouched). */
+        @media (min-width: 768px) and (orientation: landscape) {
+          nav.glass-nav .dropdown-menu a {
+            font-size: var(--h5-dept-font, 14px);
+            letter-spacing: 0.1em;
+            white-space: nowrap;
+          }
+        }
+        /* Invisible hover bridge so the dropdown stays open when moving the cursor from the trigger to the menu. */
+        
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* ===== YOU MAY ALSO LIKE — horizontal scroll-snap carousel =====
+           Converts the product list into a single-row, swipe/drag-scrollable
+           carousel across desktop, tablet, and mobile. The individual product
+           card markup/design is NOT touched — only the list container layout.
+           Scrollbar is fully hidden via .hide-scrollbar (defined above). */
+        .yml-carousel {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            scroll-snap-type: x mandatory !important;
+            scroll-behavior: smooth !important;
+            -webkit-overflow-scrolling: touch;
+            /* Same inter-card spacing as the original `gap-8` on desktop. Mobile
+               tightens it below. Padding lets the first/last card breathe and
+               keeps the focus ring/box-shadow from being clipped. */
+            gap: 2rem !important;
+            padding: 0.5rem 0.25rem 1rem !important;
+            margin: 0 !important;
+        }
+        /* Each card becomes a scroll-snap target with a fixed width per
+           breakpoint. The card's own classes/styles are unchanged. */
+        .yml-carousel > .product-card {
+            flex: 0 0 auto !important;
+            scroll-snap-align: start !important;
+            scroll-snap-stop: always !important;
+            width: 260px !important;     /* mobile default */
+            min-width: 0 !important;
+        }
+        @media (min-width: 768px) and (orientation: landscape) {
+            .yml-carousel { gap: 2rem !important; }
+            .yml-carousel > .product-card { width: 280px !important; }   /* tablet */
+        }
+        @media (min-width: 1024px) and (orientation: landscape) {
+            .yml-carousel > .product-card { width: 300px !important; }   /* desktop */
+        }
+        /* Drag-to-scroll cursor affordance (desktop) */
+        .yml-carousel.is-grabbing { cursor: grabbing !important; }
+        .yml-carousel { cursor: grab; }
+        .cart-item.fade-out { opacity: 0; transform: translateX(20px); transition: all 0.3s ease; }
+
+        /* ===== Premium loading skeleton =====
+           Shown on first paint while auth + cart (local + server + merge)
+           resolve. Removed the moment finaliseCart() runs, so the genuine
+           empty-cart state can NEVER flash before load completes. */
+        @keyframes nassim-sk-shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+        .ns-sk {
+            display: block; border-radius: 0.5rem;
+            background: linear-gradient(90deg, rgba(0,3,8,0.06) 25%, rgba(0,3,8,0.10) 50%, rgba(0,3,8,0.06) 75%);
+            background-size: 800px 100%;
+            animation: nassim-sk-shimmer 1.4s infinite linear;
+        }
+        html.dark .ns-sk {
+            background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.10) 50%, rgba(255,255,255,0.06) 75%);
+            background-size: 800px 100%;
+        }
+        #cart-skeleton { display: flex; flex-direction: column; gap: 1.5rem; }
+        @media (max-width: 767px), (orientation: portrait) { #cart-skeleton { gap: 0.75rem !important; padding: 0 1rem !important; } }
+        .cs-card { display: flex; gap: 1.5rem; background: #ffffff; border-radius: 0.625rem; padding: 1.5rem; box-shadow: 0 2px 12px rgba(0,3,8,0.05); }
+        html.dark .cs-card { background: #141a22; }
+        @media (max-width: 767px), (orientation: portrait) {
+            .cs-card { padding: 0.75rem !important; gap: 0.75rem !important; border-radius: 0.625rem !important; }
+            .cs-card .cs-img { width: 92px !important; height: 92px !important; border-radius: 0.5rem !important; }
+        }
+        .cs-card .cs-img { width: 10rem; height: 10rem; border-radius: 0.5rem; flex-shrink: 0; }
+        .cs-card .cs-body { flex: 1 1 auto; display: flex; flex-direction: column; gap: 0.6rem; }
+        .cs-card .cs-line { height: 0.8rem; border-radius: 0.25rem; }
+        .cs-card .cs-qty { height: 1.5rem; width: 5rem; border-radius: 0.25rem; margin-top: auto; }
+        .cs-card .cs-price { height: 1rem; width: 4.5rem; margin-left: auto; border-radius: 0.25rem; }
+    </style>
+<style>
+/* ==================== MOBILE CART UX (≤767px) ====================
+   Matches the approved mobile shopping experience: no breadcrumbs, content
+   flush under the compact mobile header, premium cart cards with larger image,
+   quantity selector, and icon-only Remove (trash) / Wishlist (heart) controls.
+   Desktop/tablet untouched. Reuses ALL existing cart JS — the mobile card keeps
+   every class/attribute the event delegation depends on (data-id, data-price,
+   .quantity-value, .quantity-btn-plus/minus, .remove-btn, .wishlist-btn,
+   .item-total-price, h3, img). */
+@media (max-width: 767px), (orientation: portrait) {
+    /* Hide breadcrumb + its surrounding space; content begins right under header */
+    main > nav.mb-8 { display: none !important; }
+    /* Compact mobile header is ~52px (3.25rem); desktop pt-32 over-clears it */
+    #cart-main { padding-top: 3.25rem !important; padding-left: 0 !important; padding-right: 0 !important; }
+    /* Page header: tighter, full width */
+    #cart-main > #cart-main-content > div > div.lg\:w-\[70\%\] > .flex {
+        margin-bottom: 1rem !important; padding: 0 1rem !important;
+    }
+    #cart-main h1 { font-size: 1.5rem !important; }
+    #cart-items-total-label { font-size: 0.7rem !important; }
+
+    /* Items stack: full width, comfortable side margins, tighter vertical rhythm */
+    #cart-items-container { padding: 0 1rem !important; gap: 0.75rem !important; }
+
+    /* ---- CART CARD (mobile) ---- */
+    #cart-items-container .cart-item {
+        background: #ffffff !important; border-radius: 0.625rem !important;
+        padding: 0.75rem !important; gap: 0.75rem !important;
+        box-shadow: 0 2px 12px rgba(0,3,8,0.05);
+        display: flex !important; flex-direction: row !important; align-items: stretch !important;
+    }
+    html.dark #cart-items-container .cart-item { background: #141a22 !important; }
+    /* Larger image — uniform square, rounded */
+    #cart-items-container .cart-item > div:first-child {
+        width: 92px !important; height: 92px !important; flex-shrink: 0 !important;
+        border-radius: 0.5rem !important; overflow: hidden !important; background: #edf4ff !important;
+    }
+    html.dark #cart-items-container .cart-item > div:first-child { background: #1a1f2e !important; }
+    #cart-items-container .cart-item > div:first-child img {
+        width: 100% !important; height: 100% !important; object-fit: cover !important;
+    }
+    /* Info column: fills card, flex column */
+    #cart-items-container .cart-item > div:nth-child(2) {
+        flex: 1 1 auto !important; min-width: 0 !important; gap: 0 !important;
+    }
+    /* Name/price row: name column grows + can wrap; price column is reserved
+       (flex-shrink:0) and never crowds the name. Adds a gap so the two never
+       touch, regardless of name length. */
+    #cart-items-container .cart-item > div:nth-child(2) > div:first-child {
+        display: flex !important; justify-content: space-between !important;
+        align-items: flex-start !important; gap: 0.75rem !important;
+    }
+    #cart-items-container .cart-item > div:nth-child(2) > div:first-child > div:first-child {
+        flex: 1 1 auto !important; min-width: 0 !important;
+    }
+    #cart-items-container .cart-item > div:nth-child(2) > div:first-child > div:last-child {
+        flex: 0 0 auto !important; min-width: 4.5rem !important; text-align: right !important;
+    }
+    /* Name row */
+    #cart-items-container .cart-item h3 {
+        font-size: 0.82rem !important; line-height: 1.2 !important; margin-bottom: 0.1rem !important;
+    }
+    /* Hide the secondary line label + SKU on mobile for a cleaner card */
+    #cart-items-container .cart-item .text-secondary,
+    #cart-items-container .cart-item p[class*="SKU"] { display: none !important; }
+    /* Price: prominent */
+    #cart-items-container .cart-item .item-total-price {
+        font-size: 0.95rem !important; font-family: 'Manrope', sans-serif !important; font-weight: 800 !important;
+    }
+    #cart-items-container .cart-item p.uppercase.tracking-wider,
+    #cart-items-container .cart-item p[class*="tracking-wider"] { display: none !important; }
+
+    /* Bottom action row: quantity (left) + icon buttons (right) */
+    #cart-items-container .cart-item > div:nth-child(2) > div:last-child {
+        margin-top: auto !important; padding-top: 0.4rem !important;
+    }
+    /* Quantity selector — compact */
+    #cart-items-container .cart-item .quantity-btn-minus,
+    #cart-items-container .cart-item .quantity-btn-plus { padding: 0.4rem 0.6rem !important; }
+    #cart-items-container .cart-item .quantity-value { font-size: 0.78rem !important; padding: 0 0.6rem !important; }
+
+    /* Icon-only Remove + Wishlist buttons (replace text links).
+       Hide the text label; keep only the icon. */
+    #cart-items-container .cart-item .remove-btn,
+    #cart-items-container .cart-item .wishlist-btn {
+        gap: 0 !important; padding: 0.4rem !important;
+        width: 34px; height: 34px; border-radius: 9999px;
+        justify-content: center !important; align-items: center !important;
+        background: rgba(0,3,8,0.05) !important;
+    }
+    html.dark #cart-items-container .cart-item .remove-btn,
+    html.dark #cart-items-container .cart-item .wishlist-btn { background: rgba(255,255,255,0.08) !important; }
+    #cart-items-container .cart-item .remove-btn .material-symbols-outlined,
+    #cart-items-container .cart-item .wishlist-btn .material-symbols-outlined { font-size: 18px !important; }
+    /* Icon-only on mobile: hide the text label */
+    #cart-items-container .cart-item .cart-action-label { display: none !important; }
+
+    /* ---- ORDER SUMMARY (mobile): premium, full-width card ---- */
+    /* Reuses the existing data + calculations (no JS change). */
+    #cart-main-content .lg\:w-\[30\%\] { width: 100% !important; }
+    #cart-main-content .sticky {
+        position: static !important; padding: 1.25rem !important;
+        border-radius: 0.75rem !important; margin: 1rem 1rem 0 !important;
+        box-shadow: 0 4px 24px rgba(0,3,8,0.06) !important;
+        border: 1px solid rgba(196,198,204,0.4) !important;
+    }
+    html.dark #cart-main-content .sticky { border-color: rgba(255,255,255,0.1) !important; }
+    #cart-main-content .sticky > h2 {
+        font-size: 1.05rem !important; margin-bottom: 1rem !important;
+        padding-bottom: 0.75rem !important; letter-spacing: -0.01em !important;
+    }
+    #cart-main-content .sticky .space-y-4 { gap: 0.6rem !important; margin-bottom: 1rem !important; }
+    #cart-main-content .sticky .space-y-4 > div { font-size: 0.8rem !important; }
+    #cart-main-content .sticky .space-y-4 > div span:last-child { font-weight: 600 !important; }
+    #cart-main-content .sticky .flex.items-baseline { padding-top: 0.75rem !important; border-top: 1px solid rgba(196,198,204,0.4) !important; margin-bottom: 1rem !important; }
+    html.dark #cart-main-content .sticky .flex.items-baseline { border-top-color: rgba(255,255,255,0.1) !important; }
+    #cart-main-content .sticky .flex.items-baseline > span:first-child { font-size: 0.7rem !important; }
+    #cart-main-content .sticky .flex.items-baseline > span:last-child { font-size: 1.5rem !important; }
+    #cart-main-content .sticky a[href="checkout.html"] {
+        padding: 0.9rem !important; border-radius: 0.5rem !important;
+        font-size: 0.7rem !important; letter-spacing: 0.12em !important;
+    }
+
+    /* ---- YOU MAY ALSO LIKE (mobile): 2-col premium grid ----
+       Reuses the existing .product-card markup + product-nav.js navigation.
+       The hover-reveal View Product bar is made permanently visible (no hover
+       on touch), and an always-visible Add to Cart is injected via JS below. */
+    main > section.mt-32 { margin-top: 2rem !important; padding: 0 1rem !important; }
+    main > section.mt-32 > .flex.justify-between { margin-bottom: 1rem !important; }
+    main > section.mt-32 > .flex.justify-between > div > span { font-size: 0.6rem !important; letter-spacing: 0.2em !important; }
+    main > section.mt-32 > .flex.justify-between > div > h2 { font-size: 1.2rem !important; }
+    main > section.mt-32 > .flex.justify-between > .flex { display: none !important; }   /* hide prev/next on mobile */
+    /* Mobile: tighten the carousel so ~1.6 cards are visible (peek of the next
+       card signals "swipe for more"). Overrides the desktop gap/width above. */
+    main > section.mt-32 > .yml-carousel {
+        gap: 0.75rem !important; padding: 0.5rem 1rem 1rem !important;
+    }
+    main > section.mt-32 > .yml-carousel > .product-card { width: 62vw !important; max-width: 260px !important; }
+    /* Recommendation card */
+    main > section.mt-32 .product-card {
+        background: transparent !important; min-width: 0; display: flex; flex-direction: column;
+    }
+    main > section.mt-32 .product-image-container {
+        aspect-ratio: 1 / 1 !important; margin-bottom: 0.45rem !important;
+        border-radius: 0.625rem !important; overflow: hidden !important;
+    }
+    main > section.mt-32 .product-image-container img { width: 100% !important; height: 100% !important; object-fit: cover !important; }
+    /* Mobile-only: remove the "View Product" hover bar from recommendation cards.
+       The whole card (except the ATC button below) is tappable and opens the
+       Product View via product-nav.js delegation, so the button is redundant on
+       touch. display:none collapses the bar — no leftover space remains, and the
+       image keeps its square aspect-ratio. */
+    main > section.mt-32 .product-image-container > div:last-child { display: none !important; }
+    /* Name + price typography */
+    main > section.mt-32 .product-card p.font-label { display: none !important; }   /* hide category eyebrow */
+    main > section.mt-32 .product-card h3 {
+        font-size: 0.72rem !important; line-height: 1.2 !important; margin-bottom: 0.15rem !important;
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        min-height: calc(2 * 1.2em) !important;
+    }
+    main > section.mt-32 .product-card p.font-headline { font-size: 0.8rem !important; }
+
+    /* Always-visible Add to Cart on each recommendation card (mobile only) */
+    main > section.mt-32 .yml-atc {
+        margin-top: auto !important; width: 100%;
+        display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem;
+        background: #000308; color: #fff;
+        font-family: 'Manrope', sans-serif; font-size: 0.6rem; font-weight: 800;
+        letter-spacing: 0.06em; text-transform: uppercase;
+        padding: 0.5rem 0.4rem; border-radius: 0.5rem; border: none;
+        cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+    main > section.mt-32 .yml-atc:active { background: #825335; }
+    main > section.mt-32 .yml-atc .material-symbols-outlined { font-size: 15px; }
+    html.dark main > section.mt-32 .yml-atc { background: #fff; color: #000308; }
+}
+@media (min-width: 768px) and (orientation: landscape) {
+    /* desktop card unchanged */
+}
+</style>
+<link rel="stylesheet" href="/assets/css/tailwind.css?v=20261013c">
+<link rel="stylesheet" href="assets/css/nav-popover-mobile.css?v=10"/>
+<script src="assets/js/nav-popover-mobile.js?v=5" defer></script>
+<link rel="stylesheet" href="assets/css/dark-overrides.css?v=nw1108">
+<style>
+/* MOBILE (<=767px) language toggle = home5.html: show ONLY the other
+   language (shared sync marks it .nassim-lang-off), solid black on the
+   white nav; the search icon button is mobile-visible. Desktop is
+   untouched (the legacy EN|عربي button stays hidden >=768px). */
+@media (max-width: 767px), (orientation: portrait) {
+  #home5-search-btn { display: flex !important; }
+  #home5-lang-btn { display: flex !important; }
+  #home5-lang-btn span { display: none !important; }
+  #home5-lang-btn span.nassim-lang-off { display: inline !important; }
+  html:not(.dark) #home5-lang-btn span { color: #000000 !important; }
+}
+  /* Download + Dark/Light toggle: same mobile reveal + sizing as
+     home5.html (home5-mobile.css mobile block). The cart button stays
+     hidden — the cart lives in the bottom navigation. */
+  #download-btn-container { display: block !important; }
+  #theme-toggle { display: block !important; }
+  /* icon sizes match home5’s rendered mobile values (download keeps its
+     inline 30px; the moon renders at 22px exactly as on home5) */
+  nav.glass-nav #theme-toggle .material-symbols-outlined { font-size: 22px !important; }
+  nav.glass-nav > div > div:last-child { gap: 8px !important; }
+}
+</style>
+<script>/* Standardized nav: opt out of the legacy injected mobile utility row (dark-overrides.js). */
+try { document.documentElement.setAttribute("data-nassim-no-mobile-utils", "1"); } catch (e) {}</script>
+<style>
+/* MOBILE ONLY (<=767px): the bottom navigation has a CONSTANT explicit
+   height (62.5px content + safe-area inset). It must never grow or shrink
+   when the browser's own toolbar appears/disappears and the visual/layout
+   viewport height changes — the browser may move the nav (it is fixed to
+   the bottom), but never resize it. Measured design height: 62.5px. */
+@media (max-width: 767px), (orientation: portrait) {
+  #mobile-bottom-nav {
+    height: calc(62.5px + env(safe-area-inset-bottom, 0px)) !important;
+    max-height: calc(62.5px + env(safe-area-inset-bottom, 0px)) !important;
+    box-sizing: border-box !important;
+  }
+  #mobile-bottom-nav > div {
+    height: 100% !important;
+    max-height: 100% !important;
+    box-sizing: border-box !important;
+  }
+}
+</style>
+<style>/* Arabic desktop: widen the Warehouse Equipment dropdown so the longest
+   Arabic item fits inside without overflow (same fix as supermarket.html). */
+@media (min-width: 768px) and (orientation: landscape) { html.lang-ar .dd-warehouse-wide { width: 20rem; } }</style>
+<style>
+    /* Desktop-only top-nav container (matches houseware2.html): the header
+       row uses 90% of the viewport plus the nav engine's 8px-per-side padding
+       floor, centered, so the logo and the utility row sit exactly on the 5%
+       viewport lines at any desktop width (~95px at 1920px, margins always
+       equal). Removes the max-w-screen-2xl cap that left dead space at 1920px
+       and neutralises the Tailwind px-8 padding. The row keeps justify-between
+       (departments left, utilities right) with a flexible middle gap.
+       Mobile/tablet (<768px) and portrait keep the original layout. */
+    @media (min-width: 768px) and (orientation: landscape) {
+        nav.glass-nav > div {
+            max-width: none;
+            width: calc(90% + 16px);
+            margin-inline: auto;
+            padding-inline: 8px;
+        }
+    }
+</style>
+</head>
+<body class="bg-surface dark:bg-[#0a0f14] font-body text-on-surface dark:text-white overflow-x-hidden antialiased">
+
+<!-- Loading Screen (ported from home5.html, MOBILE ONLY): logo + dots until
+     the icon/text webfonts are ready, so Material Symbols ligature names are
+     never visible on load or EN<->AR switch. Desktop: hard-hidden below. -->
+<div id="loading-screen" role="status" aria-label="Loading AL-NASSIM" style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--splash-bg,#f7f9ff);display:flex;align-items:center;justify-content:center;z-index:9999;">
+    <div class="loading-inner">
+        <img id="loading-logo" src="LOGO.png" alt="AL-Nassim" decoding="async"/>
+        <div class="loading-dots">
+            <div class="loading-dot"></div>
+            <div class="loading-dot"></div>
+            <div class="loading-dot"></div>
+        </div>
+    </div>
+</div>
+<style>
+/* Splash styles — identical to home5.html, plus the mobile-only gate:
+   at >=768px the splash never exists, so desktop is byte-for-byte
+   unchanged. */
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #f7f9ff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    /* HARD SELF-DESTRUCT (CSS-only, cannot be blocked by pending stylesheets
+       or dead JS on slow mobile connections): the splash fades itself out
+       ~3s after parse no matter what. JS cleanup normally removes it sooner;
+       this only ever fires if every script layer failed. */
+    animation: h5splashSelfDestruct 0.45s ease-out 3s forwards;
+}
+@keyframes h5splashSelfDestruct {
+    to { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+/* 2026-10-25: desktop splash re-enabled to match houseware2 - it hides the one-frame nav adjustment on reload. Mobile unchanged. */
+.dark #loading-screen { background: #0a0f14; }
+.loading-inner { display: flex; flex-direction: column; align-items: center; gap: 30px; }
+#loading-logo {
+    width: min(52vw, 210px);
+    height: auto;
+    transform: scale(0.94);
+    opacity: 0;
+    transition:
+        transform 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.5s ease-out;
+}
+#loading-screen.logo-in #loading-logo { opacity: 1; transform: scale(1); }
+.loading-dots { display: flex; gap: 12px; align-items: center; transition: none; }
+#loading-screen.reveal .loading-dots { display: none; }
+.loading-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #000308 0%, #825335 100%);
+    animation: h5splashBounce 0.6s infinite alternate;
+}
+.dark .loading-dot { background: linear-gradient(135deg, #ffffff 0%, #d8e4f3 100%); }
+.loading-dot:nth-child(2) { animation-delay: 0.2s; }
+.loading-dot:nth-child(3) { animation-delay: 0.4s; }
+#loading-screen.reveal #loading-logo {
+    transform: scale(1.22);
+    opacity: 0;
+    transition:
+        transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.25s ease-in;
+}
+#loading-screen.open {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.28s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+    #loading-logo, .loading-dots {
+        transition: opacity 0.25s ease-out !important;
+        animation: none !important;
+    }
+    /* keep the CSS self-destruct alive even with reduced motion */
+    #loading-screen { animation-duration: 0.25s !important; }
+    #loading-screen.reveal #loading-logo { transform: none; }
+}
+@keyframes h5splashBounce {
+    from { transform: translateY(0); opacity: 0.6; }
+    to { transform: translateY(-20px); opacity: 1; }
+}
+</style>
+<script>
+(function () {
+    var splash = document.getElementById("loading-screen");
+    if (!splash) return;
+    var start = performance.now();
+    var revealed = false;
+
+    requestAnimationFrame(function () {
+        requestAnimationFrame(function () { splash.classList.add("logo-in"); });
+    });
+
+    // Lock scrolling while the splash is up (released on open).
+    document.body.style.overflow = "hidden";
+
+    function cleanup() {
+        splash.style.display = "none";
+        document.body.style.overflow = "";
+    }
+
+    function reveal() {
+        if (revealed) return;
+        revealed = true;
+        // Minimum splash display so the entrance is never a flash.
+        var wait = Math.max(0, 250 - (performance.now() - start));
+        setTimeout(function () {
+            // STAGE 1: dots vanish instantly, logo zooms away — overlay still opaque.
+            splash.classList.add("reveal");
+            // STAGE 2: only after the logo is gone does the overlay open the page.
+            setTimeout(function () {
+                splash.classList.add("open");
+                setTimeout(cleanup, 320);
+            }, 300);
+        }, wait);
+    }
+
+    /* The splash exists ONLY to protect the critical visual state: applied CSS,
+       resolved theme, LTR/RTL direction, and the icon/text fonts. It must NEVER
+       wait for window load, deferred scripts, or images — those keep loading
+       after the splash is gone.
+       Ready = DOM parsed ('interactive', NOT DOMContentLoaded — DCL waits for
+       every deferred script) AND critical fonts loaded, with the fonts gated
+       by a 700ms cap so one slow font can never hold the page hostage. */
+    function pageReady() {
+        var domReady = (document.readyState !== "loading")
+            ? Promise.resolve()
+            : new Promise(function (r) {
+                document.addEventListener("readystatechange", function chk() {
+                    if (document.readyState !== "loading") { document.removeEventListener("readystatechange", chk); r(); }
+                });
+            });
+        var fontWaits = [];
+        if (document.fonts && document.fonts.load) {
+            fontWaits = [
+                document.fonts.load('24px "Material Symbols Outlined"').catch(function () {}),
+                document.fonts.load('400 16px Inter').catch(function () {}),
+                document.fonts.load('800 16px Manrope').catch(function () {})
+            ];
+        }
+        var fontsGate = Promise.race([
+            Promise.all(fontWaits),
+            new Promise(function (r) { setTimeout(r, 700); })
+        ]);
+        /* If the i18n layer hides the body until Arabic is applied
+           (html.lang-pending), reveal must wait for it — but never past the
+           normal cap. */
+        var langGate = new Promise(function (r) {
+            var el = document.documentElement;
+            if (!el.classList.contains("lang-pending")) return r();
+            var mo = new MutationObserver(function () {
+                if (!el.classList.contains("lang-pending")) { mo.disconnect(); r(); }
+            });
+            mo.observe(el, { attributes: true, attributeFilter: ["class"] });
+            setTimeout(function () { mo.disconnect(); r(); }, 1000);
+        });
+        Promise.all([domReady, fontsGate, langGate]).then(function () {
+            setTimeout(reveal, 80); // settle beat: late layout applies behind the splash
+        });
+    }
+
+    pageReady();
+    // NORMAL cap: the splash can never exceed ~1s even if readiness stalls.
+    setTimeout(reveal, 1000);
+    // Emergency failsafe only, for a genuinely broken/stuck page.
+    setTimeout(reveal, 4500);
+    // bfcache: returning to this page via Back must never show the splash.
+    window.addEventListener("pageshow", function (e) {
+        if (e.persisted) { revealed = true; cleanup(); }
+    });
+})();
+</script>
+<script>
+/* Hard failsafe (home5 pattern): whatever happens above, the splash can
+   NEVER hold the mobile page longer than ~3.2s. */
+setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.style.display="none";document.body.style.overflow="";}},3200);</script>
+
+
+<!-- ===== Shared Header (same as home5.html) ===== -->
+
+<!-- ===== TOP NAV (home5 reference): desktop top navigation ported from
+     home5.html (language dropdown, desktop search, download menu, account,
+     responsive engine). The 5 KD pill is intentionally absent and the
+     secondary FREE DELIVERY bar is NOT loaded on this page. Desktop-only:
+     the ported CSS is scoped to >=768px and the engine self-disables below
+     768px; the page's original mobile navigation is untouched. ===== -->
+<nav class="fixed w-full z-50 glass-nav dark:bg-[#0a0f14]/90 shadow-[0_40px_60px_rgba(0,3,8,0.04)] top-0">
+<style>
+  /* Soft under-shadow beneath the top-nav logo (restored, then +10%). */
+  #nav-logo { filter: drop-shadow(0 6.6px 13.2px rgba(0, 3, 8, 0.198)); }
+
+  /* --- 2026-10-25: top-nav utility icons +10% (desktop only) ------------
+     Search 26px -> 28.6px, Download/Cart 30px -> 33px (inline styles beaten
+     by !important), Dark-mode glyph 24px -> 26.4px and box 26px -> 28.6px.
+     Language label: dark-overrides.css pins #home5-lang-cur to 18.2px (EN)
+     / 13px (AR) with !important; these higher-specificity rules load after
+     it, so 18.2px -> 20.02px and 13px -> 14.3px. Same desktop breakpoint as
+     the measuring engine; mobile and tablet untouched. No layout, spacing,
+     colour or behaviour changes. --- */
+  @media (min-width: 768px) and (orientation: landscape) {
+    #home5-desktop-search-btn .material-symbols-outlined { font-size: 28.6px !important; }
+    #download-btn .material-symbols-outlined { font-size: 33px !important; }
+    #home5-cart-btn .material-symbols-outlined { font-size: 33px !important; }
+    #theme-toggle .material-symbols-outlined { width: 28.6px !important; height: 28.6px !important; font-size: 26.4px !important; }
+    html:not(.lang-ar) #home5-lang-dd #home5-lang-cur { font-size: 20.02px !important; line-height: 21.45px !important; }
+    html.lang-ar #home5-lang-dd #home5-lang-cur { font-size: 14.3px !important; line-height: 21.45px !important; }
+    #home5-lang-btn span { font-size: 13.59px !important; } /* legacy EN|عربي, hidden on desktop */
+  }
+</style>
+<div class="flex justify-between items-center w-full px-3 sm:px-4 md:px-8 py-2 max-w-screen-2xl mx-auto">
+<div class="flex items-center gap-12">
+<a href="home5.html" class="flex items-center gap-2 group cursor-pointer shrink-0">
+<img src="LOGO.webp" alt="AL-Nassim Logo" id="nav-logo" class="h-9 w-auto md:h-[4.3rem]" fetchpriority="high"/>
+</a>
+<div class="hidden md:flex gap-8">
+<div class="dropdown-trigger relative py-1">
+<a class="font-headline tracking-tight font-bold uppercase text-[15.29px] text-on-background dark:text-white hover:text-secondary transition-colors duration-300 inline-block" href="houseware2.html">Houseware<br/><span class="block text-[12.64px]">Equipment</span></a>
+<div class="dropdown-menu absolute top-full -left-24 mt-1 w-64 dark-glass-dropdown p-6 z-[60]">
+<ul class="space-y-4">
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="houseware-cleaning-tools.html">Cleaning Tools</a></li>
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="houseware-home-outdoor.html">Home & Outdoor</a></li>
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="houseware-kitchenware.html">Kitchenware</a></li>
+</ul>
+</div>
+</div>
+<div class="dropdown-trigger relative py-1">
+<a class="font-headline tracking-tight font-bold uppercase text-[15.29px] text-on-background dark:text-white hover:text-secondary transition-colors duration-300 inline-block" href="supermarket.html">Supermarket<br/><span class="block text-[12.64px]">Equipment</span></a>
+<div class="dropdown-menu absolute top-full -left-24 mt-1 w-64 dark-glass-dropdown p-6 z-[60]">
+<ul class="space-y-4">
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="supermarket-cooling-appliances.html">Cooling Appliances</a></li>
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="supermarket-trolleys-baskets.html">Trolleys & Baskets</a></li>
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="supermarket-shelves-stands.html">Shelves & Stands</a></li>
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="supermarket-checkout-solutions.html">Counters and Scales</a></li>
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="supermarket-accessories.html">Accessories</a></li>
+</ul>
+</div>
+</div>
+<div class="dropdown-trigger relative py-1">
+<a class="font-headline tracking-tight font-bold uppercase text-[15.29px] text-on-background dark:text-white hover:text-secondary transition-colors duration-300 inline-block" href="warehouse.html">Warehouse<br/><span class="block text-[12.64px]">Equipment</span></a>
+<div class="dropdown-menu absolute top-full -left-24 mt-1 w-64 dark-glass-dropdown p-6 dd-warehouse-wide z-[60]">
+<ul class="space-y-4">
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="warehouse-trolleys-baskets.html">Trolleys & Baskets</a></li>
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="warehouse-forklifts-pallets.html">Forklifts & Pallets</a></li>
+<li><a class="text-[12.35px] uppercase tracking-widest text-on-surface-variant dark:text-white/70 hover:text-secondary transition-colors" href="warehouse-heavy-duty-racking.html">Heavy Duty Racks</a></li>
+</ul>
+</div>
+</div>
+<div class="dropdown-trigger relative py-1"><a class="font-headline tracking-tight font-bold uppercase text-[15.29px] text-on-background dark:text-white hover:text-secondary transition-colors duration-300 inline-block" href="customized-packaging.html">Packaging<br/><span class="block text-[12.64px]">Manufacturer</span></a></div>
+<div class="dropdown-trigger relative py-1"><a class="font-headline tracking-tight font-bold uppercase text-[15.29px] text-on-background dark:text-white hover:text-secondary transition-colors duration-300 inline-block" href="cold-room.html">Cold<br/><span class="block text-[12.64px]">Rooms</span></a></div>
+</div>
+</div>
+<!-- Mobile inline search bar (md:hidden). Sits between logo and hamburger as a
+     direct flex child of the header row so all three elements share the same
+     vertical centre via the parent items-center. The search icon lives inside a
+     <label> so search.js bindTriggers() skips it. -->
+
+<div class="flex items-center gap-2 md:gap-6 shrink-0"><button id="home5-search-btn" type="button" aria-label="Search products" class="md:hidden flex items-center hover:opacity-80 transition-all duration-300 active:scale-95"><span class="material-symbols-outlined text-primary dark:text-white" style="font-size:26px;">search</span></button>
+<!-- Desktop inline search bar -->
+<form class="hidden md:flex relative m-0 items-center" id="desktop-inline-search" role="search" autocomplete="off">
+<input id="desktop-search-input" type="text" name="q" placeholder="Search products..." aria-label="Search products" class="w-44 lg:w-56 h-9 px-3 py-2 rounded-full bg-white dark:bg-white/10 text-sm text-on-surface dark:text-white placeholder:text-on-surface-variant/60 border border-black/20 dark:border-white/20 outline-none focus:ring-2 focus:ring-primary/40 focus:w-64 transition-all duration-300"/>
+</form>
+<button id="home5-desktop-search-btn" type="button" aria-label="Search products" class="hidden md:flex hover:opacity-80 transition-all duration-300 active:scale-95 items-center"><span class="material-symbols-outlined text-primary dark:text-white" style="font-size:26px;">search</span></button>
+<button id="home5-lang-btn" class="hidden md:flex hover:opacity-80 transition-all duration-300 active:scale-95 items-center">
+<span class="text-[12.35px] font-label font-bold tracking-widest text-primary dark:text-white">EN</span>
+<span class="mx-1 text-primary/30 dark:text-white/30 font-light text-[12.35px]">|</span>
+<span class="text-[12.35px] font-label font-bold tracking-widest text-primary/50 dark:text-white/50 hover:text-primary dark:hover:text-white transition-colors">عربي</span>
+</button>
+<!-- DESKTOP-ONLY (>=768px) language selector. Shows ONLY the current language
+     ("ENG" / "عربي"); hover or click reveals a compact dropdown offering the
+     other language. Selecting an option persists localStorage('nassim-lang')
+     and reloads — the exact existing mechanism (window.NassimLang) the legacy
+     EN|عربي button above still uses on <=767px. The legacy button is hidden on
+     desktop only, by the h5 engine CSS at the end of this file; its markup is
+     untouched so mobile keeps byte-identical behavior. Default display:none at
+     ALL widths here; the >=768px media query below reveals it. -->
+<div id="home5-lang-dd" class="h5-lang-dd">
+<button id="home5-lang-trigger" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Language">
+<span id="home5-lang-cur" class="text-[12.35px] font-label font-bold tracking-widest text-primary dark:text-white">ENG</span>
+</button>
+</div>
+<div class="relative group hidden md:block" id="download-btn-container">
+<button class="hover:opacity-80 transition-all duration-300 active:scale-95" id="download-btn">
+<span class="material-symbols-outlined dark:text-slate-300" style="font-size: 30px;">download</span>
+</button>
+<!-- Premium Dropdown Menu -->
+<div class="absolute top-full left-1/2 -translate-x-1/2 mt-4 w-52 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform group-hover:translate-y-0 translate-y-2 z-50" id="download-popup">
+<div class="bg-[#135bec] rounded-2xl shadow-2xl overflow-hidden">
+<!-- Header -->
+<div class="px-6 py-4 border-b border-white/20" style="background-color: #135bec;">
+<h3 class="text-white font-headline font-bold text-sm uppercase tracking-wider">DOWNLOAD OUR APP</h3>
+
+</div>
+<!-- Download Options -->
+<div class="space-y-3 flex flex-col items-center bg-transparent">
+<a href="#" class="flex items-center justify-center rounded-lg hover:bg-blue-50/80 dark:hover:bg-blue-900/30 transition-all duration-300 group/btn border-0 overflow-hidden w-fit p-2" style="background-color: #135bec;">
+<picture><source media="(max-width: 767px), (orientation: portrait)" srcset="topcar/aple-mobile.webp"/><img loading="lazy" src="topcar/aple.webp" alt="App Store" class="w-[75%] h-[70%] object-contain rounded-lg" decoding="async"/></picture>
+</a>
+<a href="#" class="flex items-center justify-center rounded-lg hover:bg-blue-50/80 dark:hover:bg-blue-900/30 transition-all duration-300 group/btn border-0 overflow-hidden w-fit p-2" style="background-color: #135bec;">
+<picture><source media="(max-width: 767px), (orientation: portrait)" srcset="topcar/ggle-mobile.webp"/><img loading="lazy" src="topcar/ggle.webp" alt="Google Play" class="w-[75%] h-[70%] object-contain rounded-lg" decoding="async"/></picture>
+</a>
+</div>
+</div>
+</div>
+</div>
+<button class="hidden md:block hover:opacity-80 transition-all duration-300 active:scale-95" id="theme-toggle">
+<span class="material-symbols-outlined text-primary dark:text-white w-[26px] h-[26px]">dark_mode</span>
+</button>
+<button id="home5-cart-btn" class="hidden md:block relative hover:opacity-80 transition-all duration-300 active:scale-95" aria-label="Cart">
+<span class="material-symbols-outlined dark:text-slate-300" style="font-size: 30px;">shopping_cart</span><span class="nassim-cart-badge absolute -top-1.5 -right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-secondary text-white text-[9px] font-bold items-center justify-center leading-none" style="display:none;">00</span>
+</button>
+
+
+<!-- DESKTOP-ONLY (>=768px) utility hamburger — a FALLBACK rendered only when
+     the measured responsive engine (script unit at the end of <body>) proves
+     the full utility row cannot fit without overlap after proportional gap
+     reduction. When engaged (nav.glass-nav.h5-utils-menu) it hosts Download
+     App, Language and Dark/Light Mode; the real controls keep their existing
+     behavior (language/theme rows proxy window.NassimLang /
+     __nassimThemeToggle). Download App inside this panel has NO hover
+     dropdown: a CLICK detects the visitor's platform at click time and
+     would navigate to the future ANDROID_APP_URL / IOS_APP_URL (both left
+     unconfigured while the app is not published — see the constants in the
+     script unit at the end of <body>).
+     Never rendered at <=767px: display:none at all widths by default. -->
+<div id="home5-burger-dd" class="h5-burger-dd">
+<button id="home5-burger-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="More utilities">
+<span class="material-symbols-outlined h5-burger-icon">menu</span>
+</button>
+<div id="home5-burger-panel" class="dark-glass-dropdown" role="menu" aria-label="Utilities">
+<div class="h5-b-row" id="h5-b-download" tabindex="0" role="menuitem" aria-label="Download App">
+<span class="material-symbols-outlined h5-b-ic">download</span>
+<span class="h5-b-label font-label">Download App</span>
+</div>
+<div class="h5-b-sep" aria-hidden="true"></div>
+<div class="h5-b-row" id="h5-b-lang" tabindex="0" role="menuitem" aria-label="Language">
+<span class="material-symbols-outlined h5-b-ic">language</span>
+<span class="h5-b-label font-label">Language</span>
+<span class="h5-b-langval font-label" id="h5-b-langval">عربي</span>
+</div>
+<div class="h5-b-sep" aria-hidden="true"></div>
+<div class="h5-b-row" id="h5-b-theme" tabindex="0" role="menuitem" aria-label="Dark / Light Mode">
+<span class="material-symbols-outlined h5-b-ic" id="h5-b-theme-ic">dark_mode</span>
+<span class="h5-b-label font-label">Dark / Light Mode</span>
+</div>
+</div>
+</div>
+<button id="hamburger-slot" class="md:hidden hover:opacity-80 transition-all duration-300 active:scale-95 flex items-center justify-center p-0" aria-label="Open menu">
+<span class="material-symbols-outlined text-primary dark:text-white w-[26px] h-[26px]">menu</span>
+</button>
+</div>
+</div>
+</nav>
+
+<style>
+/* =====================================================================
+   home5.html — DESKTOP-ONLY (>=768px) RESPONSIVE TOP NAVIGATION
+   =====================================================================
+   Scope: the fixed glass TOP navigation of home5.html ONLY.
+     * Mobile (<768px) is COMPLETELY untouched: every rule below either
+       lives inside @media (min-width: 768px) and (orientation: landscape) or only hides NEW elements
+       (#home5-lang-dd / #home5-burger-dd) that do not exist in the mobile
+       layout. The legacy #home5-lang-btn "EN | عربي" markup is unchanged —
+       it keeps serving <=767px and is merely hidden on desktop.
+     * The FREE DELIVERY secondary bar, department dropdown behavior and
+       search functionality are not modified.
+   What this unit adds (matching the page's colocated style+script units):
+     1. 5 KD pill — clear separation from the cart via an extra
+        margin-inline-start gap (auto-flips to the cart's side in Arabic
+        RTL, where the pill sits LEFT of the cart). Pill design untouched.
+     2. Language selector — desktop shows ONLY the current language
+        ("ENG"/"عربي") with a compact hover/click dropdown offering the
+        other language. Switching uses the EXISTING mechanism: it saves
+        localStorage('nassim-lang') and reloads (what the legacy EN|عربي
+        button does via window.NassimLang.toggle()).
+     3. Measured proportional compression — a ResizeObserver engine (script
+        below) measures the REAL DOM widths and scales the nav gaps by one
+        shared factor (logo gap, department gap, utility gap, cart↔pill gap
+        all shrink PROPORTIONALLY, each with a safe floor). No arbitrary
+        per-element squeezing; wide desktops stay exactly as before.
+     4. Desktop hamburger FALLBACK — only when measurement proves the row
+        cannot fit even at floor gaps does nav.h5-utils-menu engage:
+        Download / Language / Theme leave the bar (their existing controls
+        are reused inside the panel — never duplicated) and a compact
+        burger appears. Disengages automatically when space returns.
+        Department navigation, search and the cart NEVER move.
+   No-JS / engine-off safety: the variable-driven rules below require
+   nav.glass-nav.h5-engine (a class the JS engine adds only at >=768px),
+   so without JS the header keeps its previous styles byte-for-byte. */
+
+/* New desktop controls are hidden at EVERY width by default; the >=768px
+   block below reveals them. Mobile never sees them. */
+#home5-lang-dd, #home5-burger-dd { display: none; }
+
+@media (min-width: 768px) and (orientation: landscape) {
+  /* --- language selector: legacy dual "EN | عربي" button hidden on DESKTOP
+     only (mobile keeps it — home5-mobile.css forces it visible <=767px). --- */
+  #home5-lang-btn { display: none !important; }
+  #home5-lang-dd { display: block; }
+
+  /* --- gap variables (set by the JS engine; fallbacks = current naturals).
+     html.lang-ar twins keep specificity parity with the AR rules in
+     home5-mobile.css so the variables always win once the engine is on. --- */
+  nav.glass-nav.h5-engine > div > div:first-child,
+  html.lang-ar nav.glass-nav.h5-engine > div > div:first-child { gap: var(--h5-g-logo, 48px) !important; }
+  nav.glass-nav.h5-engine div.gap-8,
+  html.lang-ar nav.glass-nav.h5-engine div.gap-8 { gap: var(--h5-g-dept, 22px) !important; }
+  nav.glass-nav.h5-engine > div > div:last-child,
+  html.lang-ar nav.glass-nav.h5-engine > div > div:last-child { gap: var(--h5-g-util, 18px) !important; }
+
+  /* --- 5 KD pill: extra breathing room on the CART side. Logical margin
+     flips automatically in Arabic (cart is on the pill's inline start). --- */
+  #home5-min5-pill, html.lang-ar #home5-min5-pill {
+    margin-inline-start: var(--h5-g-pill, 40px) !important;
+  }
+
+  /* --- cart: SMALL separation from the preceding utility icon (moon in EN).
+     Logical margin auto-mirrors in Arabic RTL (gap lands on the cart's
+     RIGHT side there). Funded from the existing row budget — the engine's
+     math includes CART_GAP, so no extra navigation width is created. --- */
+  nav.glass-nav button[aria-label="Cart"],
+  html.lang-ar nav.glass-nav button[aria-label="Cart"] {
+    margin-inline-start: 10px;
+  }
+
+  /* --- Arabic FREE DELIVERY unit: truck physically LEFT of the text.
+     Internal order of each unit ONLY (same treatment the mobile bar's
+     .nssn-mirror already applies); track direction, unit count, gap and
+     loop math are untouched, and the unit width is identical either way,
+     so the seamless conveyor is unaffected. --- */
+  html.lang-ar #nassim-secondary-nav.h5conv .nssn-unit { flex-direction: row-reverse; }
+  html.lang-ar #nassim-secondary-nav.h5conv .nssn-unit .material-symbols-outlined { transform: scaleX(-1); }
+
+  /* --- Arabic top-nav cart: mirror the ICON glyph only so it faces LEFT
+     (matches RTL travel direction). The badge is a sibling span — it is not
+     flipped and stays readable; position/functionality untouched. English
+     and mobile are unaffected. --- */
+  html.lang-ar nav.glass-nav button[aria-label="Cart"] > span.material-symbols-outlined { transform: scaleX(-1); }
+  /* Badge moves to the cart's LEFT side in Arabic (mirrors the EN -right-2
+     placement); number itself is not flipped and stays readable. */
+  html.lang-ar nav.glass-nav button[aria-label="Cart"] .nassim-cart-badge {
+    right: auto !important;
+    left: -0.5rem !important;
+  }
+
+  /* --- logo height variable (last-resort stage of the ladder; the engine
+     seeds it with the height currently in force, including the AR 34px
+     rule, before this rule can ever apply). --- */
+  nav.glass-nav.h5-engine img[alt="AL-Nassim Logo"],
+  html.lang-ar nav.glass-nav.h5-engine img[alt="AL-Nassim Logo"] {
+    height: var(--h5-logo-h, 4.3rem) !important;
+  }
+
+  /* --- PERMANENT TWO-LINE DEPARTMENT LABELS -----------------------------
+     The compression tiers in home5-mobile.css hid the second line
+     (a span.block) below 1240px. That is disabled here at EVERY desktop
+     width: the label's structure (line + <br> + line) and typography are
+     untouched, the items cannot be flex-squeezed, and the responsive engine
+     (script below) creates the needed room with proportional gap/padding
+     reduction + the utility burger instead. Mobile is not affected (this
+     whole block is scoped to >=768px; the mobile drawer builds its own
+     markup outside nav.glass-nav). */
+  nav.glass-nav div.gap-8 a span.block { display: block !important; }
+  nav.glass-nav div.gap-8 > div { flex-shrink: 0; }
+  nav.glass-nav div.gap-8 a { flex-shrink: 0; }
+
+  /* --- row horizontal padding joins the proportional budget --------------
+     The engine scales it with the same shared factor as the gaps (floor
+     applies too), per the narrow-desktop priority: reduce spacing AND
+     padding before touching content. */
+  nav.glass-nav.h5-engine > div { padding-inline: var(--h5-row-px, 2rem) !important; }
+
+  /* --- 2026-10-24 nav spacing tune (desktop only) — side padding removed
+     2026-10-25: the outer inset this rule used to provide (clamp(24px,
+     3.25vw, 64px)) is now supplied by the responsive container further up in
+     this file (90% viewport width + 16px engine padding floor, centered),
+     which pins the logo and the 5 KD pill to the exact 5% viewport lines at
+     every desktop width. Padding is set to the engine's own FLOOR.pad (8px)
+     here: the measuring engine reads this as its natural and holds it (its
+     floor is also 8px, so it never grows back), keeping the only remaining
+     inset small and predictable. The logo + department group sits flush
+     LEFT and the utility group
+     (search, lang, download, dark mode, cart, 5 KD pill) flush RIGHT, with
+     the left and right outer gaps EQUAL. The logo->departments gap is
+     tightened 48px -> 32px (mockup) and department-to-department gaps stay
+     32px (gap-8, unchanged). The measured engine reads these as its
+     naturals and keeps scaling them symmetrically on narrower desktops
+     (its own .h5-engine rules above have higher specificity and still win
+     while the engine is active). Mobile/tablet (<768px) and portrait never
+     match this block. --- */
+  nav.glass-nav > div,
+  html.lang-ar nav.glass-nav > div {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  nav.glass-nav > div > div:first-child,
+  html.lang-ar nav.glass-nav > div > div:first-child { gap: 52.8px; } /* 2026-10-25: logo->first-department gap: 32 -> 33.6 (+5%, imperceptible) -> 48 -> 52.8 (+10%) on user request */
+
+  /* --- 2026-10-25: department-to-department gap +5% (was 22px, then 23.1px, now 25.47px = 22 × 1.05³) ----
+     The 22px base came from home5-mobile.css (gap: 22px !important, shared
+     file — not modified). This page-local rule wins the !important tie by
+     stylesheet order, and the measuring engine reads 23.1px as its natural,
+     scaling it with the rest of the row on narrower desktops. Scoped to
+     >=1241px so the 1024-1240px compression tiers in home5-mobile.css keep
+     their own tighter gaps. Fonts were raised 10% in the markup
+     (15.4px / 12.1px); the engine parses those as its new reference sizes. */
+  @media (min-width: 1241px) and (orientation: landscape) {
+    nav.glass-nav div.gap-8 { gap: 42px !important; } /* 2026-10-25: dept gaps standardized to houseware2 reference (42px) */
+  }
+
+  /* --- text-size variables for the LAST-RESORT ladder stages -------------
+     Only reached (deep in the ladder) when gaps + padding + burger + logo
+     steps together still cannot fit: the department fonts and the pill font
+     shrink by a small stage factor. The engine seeds these with the tier
+     values in force, so wide desktops never see them change. */
+  nav.glass-nav.h5-engine div.gap-8 a,
+  html.lang-ar nav.glass-nav.h5-engine div.gap-8 a {
+    font-size: var(--h5-dept-font, 14px) !important;
+  }
+  /* The i18n engine pins Arabic text runs it considers too small to an
+     inline 12.88px minimum (enforceMinFontSize). The nav governs its OWN
+     readable minimum instead, so the scale variables must also win on the
+     INNER wrapper spans — stylesheet !important beats those inline pins.
+     Direct-child wrappers share the FIRST-line size; the second line
+     (span.block + anything inside it) keeps the smaller sub size. */
+  nav.glass-nav.h5-engine div.gap-8 a > span:not(.block),
+  html.lang-ar nav.glass-nav.h5-engine div.gap-8 a > span:not(.block) {
+    font-size: var(--h5-dept-font, 14px) !important;
+  }
+  nav.glass-nav.h5-engine div.gap-8 a span.block,
+  nav.glass-nav.h5-engine div.gap-8 a span.block span,
+  html.lang-ar nav.glass-nav.h5-engine div.gap-8 a span.block,
+  html.lang-ar nav.glass-nav.h5-engine div.gap-8 a span.block span {
+    font-size: var(--h5-dept-sub-font, 11px) !important;
+  }
+  nav.glass-nav.h5-engine #home5-min5-pill,
+  nav.glass-nav.h5-engine #home5-min5-pill span {
+    font-size: var(--h5-pill-font, 12px) !important;
+  }
+
+  /* Gap/logo/pill changes apply DISCRETELY (no transition): animated gaps
+     could transiently overlap right after a stage flip while the viewport
+     is being dragged. */
+
+  /* --- desktop hamburger fallback stages ---------------------------------
+     The 5 KD pill is NEVER part of this fallback: it stays in the top
+     navigation at every desktop width (there is deliberately no
+     pill-hiding rule anymore; the engine's ladder has no such stage). */
+  nav.glass-nav.h5-utils-menu #home5-burger-dd { display: block; }
+  nav.glass-nav.h5-utils-menu #download-btn-container,
+  nav.glass-nav.h5-utils-menu #home5-lang-dd,
+  nav.glass-nav.h5-utils-menu #theme-toggle { display: none !important; }
+}
+
+/* ===================== language dropdown look ===================== */
+#home5-lang-dd { position: relative; }
+#home5-lang-trigger {
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 2px; margin: 0; background: transparent; border: 0;
+  cursor: pointer; transition: opacity 0.3s ease, transform 0.15s ease;
+}
+#home5-lang-trigger:hover { opacity: 0.8; }
+#home5-lang-trigger:active { transform: scale(0.95); }
+/* Small, subtle down-chevron next to the current language (desktop only —
+   the whole #home5-lang-dd is display:none <=767px). Uses the existing
+   Material Symbols font; sits after the label in both LTR and RTL because
+   the flex row follows direction. */
+#home5-lang-caret {
+  font-size: 14px; line-height: 1; font-weight: 400;
+  letter-spacing: 0; user-select: none;
+  color: rgba(17, 29, 39, 0.45);
+  transition: color 0.3s ease;
+}
+html.dark #home5-lang-caret { color: rgba(255, 255, 255, 0.45); }
+html.lang-ar #home5-lang-caret { color: rgba(17, 29, 39, 0.45); }
+html.dark.lang-ar #home5-lang-caret { color: rgba(255, 255, 255, 0.45); }
+#home5-lang-trigger:hover #home5-lang-caret,
+#home5-lang-dd.open #home5-lang-caret { color: inherit; }
+/* In RTL, the Arabic label has no letter-spacing to trim; nudge the caret
+   slightly so it doesn't visually crowd the عربي glyphs. */
+html.lang-ar #home5-lang-caret { margin-inline-start: 1px; }
+#home5-lang-menu {
+  position: absolute; top: calc(100% + 10px); left: 50%;
+  min-width: 108px; padding: 6px;
+  display: flex; flex-direction: column; gap: 2px;
+  opacity: 0; visibility: hidden; transform: translate(-50%, 6px);
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+  z-index: 70; border-radius: 16px;
+  box-shadow: 0 14px 38px rgba(0, 3, 8, 0.16);
+}
+#home5-lang-dd:hover #home5-lang-menu,
+#home5-lang-dd.open #home5-lang-menu,
+#home5-lang-dd:focus-within #home5-lang-menu {
+  opacity: 1; visibility: visible; transform: translate(-50%, 0);
+}
+.h5-lang-opt {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 9px 12px; border-radius: 10px; border: 0;
+  background: transparent; cursor: pointer;
+  font-size: 13px; font-weight: 700; letter-spacing: 0.09em;
+  color: #111d27; white-space: nowrap; text-align: center;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.h5-lang-opt:hover, .h5-lang-opt:focus-visible {
+  background: rgba(130, 83, 53, 0.10); color: #825335; outline: none;
+}
+/* .dark-glass-dropdown stays light-surfaced in dark mode (existing rule),
+   so the option text keeps dark ink in both themes. */
+html:not(.dark) #home5-lang-menu { background: rgba(247, 249, 255, 0.96); }
+html:not(.dark) #home5-lang-menu .h5-lang-opt { color: #111d27; }
+
+/* ===================== desktop burger fallback look ===================== */
+#home5-burger-dd { position: relative; }
+#home5-burger-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; padding: 0; margin: 0;
+  background: transparent; border: 0; cursor: pointer; color: #000308;
+  transition: opacity 0.3s ease, transform 0.15s ease;
+}
+html.dark #home5-burger-btn { color: #ffffff; }
+#home5-burger-btn:hover { opacity: 0.8; }
+#home5-burger-btn:active { transform: scale(0.95); }
+.h5-burger-icon { font-size: 26px !important; line-height: 1; }
+#home5-burger-panel {
+  position: absolute; top: calc(100% + 12px); inset-inline-end: 0;
+  min-width: 238px; max-width: 268px; padding: 6px;
+  display: flex; flex-direction: column;
+  opacity: 0; visibility: hidden; transform: translateY(6px);
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+  z-index: 70; border-radius: 16px;
+  box-shadow: 0 14px 38px rgba(0, 3, 8, 0.16);
+}
+#home5-burger-dd.open #home5-burger-panel { opacity: 1; visibility: visible; transform: translateY(0); }
+.h5-b-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 10px; cursor: pointer;
+  user-select: none; -webkit-user-select: none;
+  transition: background-color 0.15s ease;
+}
+.h5-b-row:hover, .h5-b-row:focus-visible { background: rgba(130, 83, 53, 0.10); outline: none; }
+.h5-b-ic { font-size: 21px !important; line-height: 1; color: #111d27; }
+.h5-b-label { font-size: 13px; font-weight: 600; color: #111d27; letter-spacing: 0.02em; white-space: nowrap; }
+.h5-b-langval { margin-inline-start: auto; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: #825335; }
+.h5-b-sep { height: 1px; margin: 4px 8px; background: rgba(0, 3, 8, 0.08); }
+
+/* Download App inside the burger panel is CLICK-DRIVEN ONLY (platform
+   detection + future store URL — see the script unit at the end of <body>).
+   There is deliberately NO hover dropdown here: the wide-desktop
+   #download-btn-container hover popup is a separate control and stays
+   hidden while the burger is engaged (its container is display:none in
+   h5-utils-menu mode). */
+</style>
+
+<script>
+/* =====================================================================
+   home5.html — DESKTOP (>=768px) top-nav responsive engine + controls.
+   Mobile (<768px) does everything it already did: the engine removes its
+   classes/variables below 768px and never runs its ladder there.
+   ===================================================================== */
+(function () {
+  'use strict';
+  var nav = document.querySelector('nav.glass-nav');
+  if (!nav || !document.getElementById('home5-desktop-search-btn')) return; // home5 only
+
+  var ddWrap = document.getElementById('home5-lang-dd');
+  var ddTrigger = document.getElementById('home5-lang-trigger');
+  var burgerWrap = document.getElementById('home5-burger-dd');
+  var burgerBtn = document.getElementById('home5-burger-btn');
+  var pillEl = document.getElementById('home5-min5-pill');
+  if (!ddWrap || !burgerWrap) return;
+
+  /* ------------------- language (existing mechanism) -------------------
+     Reads via window.NassimLang.get() when present (localStorage key
+     'nassim-lang', default 'en'). Choosing a language saves that same key
+     and reloads — the net behavior of the existing EN|عربي toggle(). */
+  function getLang() {
+    try {
+      if (window.NassimLang && window.NassimLang.get) return window.NassimLang.get();
+      return localStorage.getItem('nassim-lang') === 'ar' ? 'ar' : 'en';
+    } catch (e) { return 'en'; }
+  }
+  function chooseLang(v) {
+    if (getLang() === v) { closeMenus(); return; }
+    try { localStorage.setItem('nassim-lang', v); } catch (e) {}
+    /* Intentional same-sheet language reload: passport the EXACT query so
+       the one-shot sheet guard allows this reload (it consumes the passport
+       immediately), while genuine navigation away stays protected. */
+    try { sessionStorage.setItem('nassim_sheet_lang_reload', location.search); } catch (e) {}
+    location.reload();
+  }
+  function syncLang() {
+    var cur = getLang();
+    /* DIRECT SWITCH BUTTON: the label shows the OTHER language
+       (English page -> عربي, Arabic page -> ENG). No dropdown. */
+    var label = document.getElementById('home5-lang-cur');
+    if (label) label.textContent = cur === 'ar' ? 'ENG' : 'عربي';
+    var val = document.getElementById('h5-b-langval');
+    if (val) val.textContent = cur === 'ar' ? 'ENG' : 'عربي';
+  }
+
+  /* ------------------------- menu open/close ------------------------- */
+  function closeMenus() {
+    ddWrap.classList.remove('open');
+    burgerWrap.classList.remove('open');
+    if (ddTrigger) ddTrigger.setAttribute('aria-expanded', 'false');
+    if (burgerBtn) burgerBtn.setAttribute('aria-expanded', 'false');
+  }
+  if (ddTrigger) ddTrigger.addEventListener('click', function (e) {
+    e.stopPropagation();
+    /* DIRECT SWITCH: immediate language toggle via the existing mechanism
+       (localStorage 'nassim-lang' + reload). No dropdown. */
+    chooseLang(getLang() === 'ar' ? 'en' : 'ar');
+  });
+  if (burgerBtn) burgerBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    var open = !burgerWrap.classList.contains('open');
+    closeMenus();
+    syncThemeIcon();
+    burgerWrap.classList.toggle('open', open);
+    burgerBtn.setAttribute('aria-expanded', String(open));
+  });
+  document.addEventListener('click', function (e) {
+    if (!e.target || !e.target.closest || !e.target.closest('#home5-lang-dd, #home5-burger-dd')) closeMenus();
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenus(); });
+
+  var opts = ddWrap.querySelectorAll('.h5-lang-opt');
+  for (var oi = 0; oi < opts.length; oi++) {
+    (function (b) { b.addEventListener('click', function () { chooseLang(b.getAttribute('data-h5-lang')); }); })(opts[oi]);
+  }
+  var langRow = document.getElementById('h5-b-lang');
+  if (langRow) langRow.addEventListener('click', function () { chooseLang(getLang() === 'ar' ? 'en' : 'ar'); });
+
+  /* ------------------- theme proxy (existing theme.js) ------------------- */
+  function syncThemeIcon() {
+    var ic = document.getElementById('h5-b-theme-ic');
+    if (ic) ic.textContent = document.documentElement.classList.contains('dark') ? 'light_mode' : 'dark_mode';
+  }
+  var themeRow = document.getElementById('h5-b-theme');
+  if (themeRow) themeRow.addEventListener('click', function () {
+    if (typeof window.__nassimThemeToggle === 'function') window.__nassimThemeToggle();
+    syncThemeIcon();
+  });
+  window.addEventListener('storage', function (e) { if (e.key === 'color-theme') syncThemeIcon(); });
+
+  /* ============ Download App INSIDE the desktop burger (click-only) ============
+     NO hover dropdown here. A CLICK detects the visitor's platform AT CLICK
+     TIME (never at page load) and navigates to the matching store URL.
+
+     FUTURE CONFIGURATION — the app is NOT published yet, so both URLs are
+     intentionally null. When the real listings exist, set ONLY these two
+     constants (full https URLs); the detection logic needs no changes:
+       ANDROID_APP_URL -> Google Play listing
+       IOS_APP_URL     -> Apple App Store listing
+     While a URL is null, clicking keeps the current page open (no
+     navigation, no visible popup) and logs a development console message. */
+  var ANDROID_APP_URL = null; // future: e.g. 'https://play.google.com/store/apps/details?id=<app.id>'
+  var IOS_APP_URL = null;     // future: e.g. 'https://apps.apple.com/<region>/app/<app>/id<id>'
+
+  function detectPlatform() {
+    var ua = navigator.userAgent || '';
+    // userAgentData (Chromium): the platform brand survives UA reductions.
+    try {
+      if (navigator.userAgentData && navigator.userAgentData.platform) {
+        var p = navigator.userAgentData.platform;
+        if (/android/i.test(p) || /android/i.test(ua)) return 'android';
+        // userAgentData.platform never reports iOS (Safari lacks the API),
+        // so iOS continues through the classic checks below.
+      }
+    } catch (e) {}
+    if (/android/i.test(ua)) return 'android';
+    if (/iPhone|iPad|iPod/i.test(ua)) return 'ios';
+    // iPadOS 13+ reports a desktop-style Macintosh UA; real Macs have no
+    // multi-touch. Touch points + MacIntel platform => iPad.
+    if ((navigator.platform === 'MacIntel' || /Macintosh/i.test(ua)) && navigator.maxTouchPoints > 1) return 'ios';
+    return 'desktop'; // ordinary Windows / macOS / Linux / unknown — never misclassified
+  }
+
+  var dlRow = document.getElementById('h5-b-download');
+  if (dlRow) dlRow.addEventListener('click', function () {
+    var platform = detectPlatform();
+    var url = platform === 'android' ? ANDROID_APP_URL : (platform === 'ios' ? IOS_APP_URL : null);
+    if (url) {
+      window.location.href = url;
+      return;
+    }
+    if (platform === 'android') {
+      console.warn('[home5] Android app store URL is not configured yet. Set ANDROID_APP_URL in home5.html when the app is published.');
+    } else if (platform === 'ios') {
+      console.warn('[home5] iOS App Store URL is not configured yet. Set IOS_APP_URL in home5.html when the app is published.');
+    } else {
+      console.info('[home5] Download App: no app-store destination exists for this platform yet.');
+    }
+  });
+
+  /* ===================== measured responsive ladder =====================
+     Hard invariants (desktop only):
+       - Department typography scales PROGRESSIVELY from the normal desktop
+         size (the wide-desktop font parsed from the markup: 14px English,
+         16.1px Arabic after the AR +15% rule) down to a readable minimum
+         (~11px EN / ~9.6px AR) — never a fixed "hamburger font size", never
+         a sudden jump, and the two-line hierarchy (larger first line,
+         smaller second line at a constant 14:11 ratio) is preserved at
+         every scale. All department items share ONE scale.
+       - The 5 KD pill is NEVER hidden.
+       - The burger state is MONOTONIC: once active it stays active while
+         the viewport is below the normal-navigation width.
+     Per stage the engine: (1) keeps the logo step, (2) solves the LARGEST
+     text scale that fits with gaps at their floors, (3) then sizes the
+     gaps/padding to FILL the row (compact — no huge middle gap; gaps may
+     grow slightly above natural in burger mode only). */
+  var VARS = ['--h5-g-logo', '--h5-g-dept', '--h5-g-util', '--h5-g-pill', '--h5-logo-h',
+              '--h5-row-px', '--h5-dept-font', '--h5-dept-sub-font', '--h5-pill-font'];
+  var FLOOR = { logo: 10, dept: 4, util: 6, pill: 12, pad: 8 }; // absolute safe minimums
+  var PILL_NAT = 40;   // natural extra cart<->pill separation (px)
+  var CART_GAP = 10;   // constant cart separation margin (margin-inline-start)
+  var BETWEEN = 8;     // minimum air between the logo/dept group and utilities
+  var LOGO_STEPS = [1, 0.84, 0.7, 0.6, 0.5];
+  var EXIT_HYST = 12;  // px of clear slack required to LEAVE burger mode
+  var FULL_MIN_S = 0.90; // full nav is kept only while fonts stay >= 90% of normal
+  var GAP_GROW_MAX = 1.3; // burger mode may grow gaps above natural to fill space
+
+  var row = null, leftG = null, rightG = null, deptBox = null, logoA = null, logoImg = null;
+
+  function findNodes() {
+    row = nav.firstElementChild;
+    while (row && row.tagName !== 'DIV') row = row.nextElementSibling;
+    if (!row) return false;
+    var kids = row.children, i;
+    leftG = null; rightG = null;
+    for (i = 0; i < kids.length; i++) {
+      if (kids[i].id === 'nassim-mobile-utils') continue; // mobile-only injected cluster
+      if (!leftG) leftG = kids[i];
+      else if (!rightG) rightG = kids[i];
+    }
+    if (!rightG || !rightG.querySelector('#account-btn')) rightG = row.lastElementChild;
+    deptBox = leftG ? leftG.querySelector('div.gap-8') : null;
+    logoA = leftG ? leftG.querySelector('a') : null;
+    logoImg = logoA ? logoA.querySelector('img') : null;
+    return !!(leftG && rightG && deptBox && logoA && logoImg);
+  }
+
+  function isDesktop() { return window.matchMedia('(min-width: 768px) and (orientation: landscape)').matches; }
+
+  /* Reference typography: the NORMAL wide-desktop department size, parsed
+     from the markup's own utility class (text-[14px]) so it tracks the real
+     design. Arabic gets the existing +15% html.lang-ar rule. The second line
+     keeps its 14:11 hierarchy at every scale; the pill shares the scale so
+     text shrinks together, never one dimension alone. The readable minimums
+     (~11px EN / ~9.6px AR) become per-language scale floors. */
+  function fontRefs() {
+    var a = deptBox.querySelector('a');
+    var m = a ? (a.className.match(/text-\[([0-9.]+)px\]/)) : null;
+    var main = m ? parseFloat(m[1]) : 16;
+    /* sub-line size parsed from the markup too (2026-10-24: sub bumped
+       11px -> 13px with the main line), so the ladder scales the real
+       second-line size instead of a stale hardcoded 11px. */
+    var sb = a ? a.querySelector('span.block') : null;
+    var sm = sb ? (sb.className.match(/text-\[([0-9.]+)px\]/)) : null;
+    var sub = sm ? parseFloat(sm[1]) : 13;
+    var ar = document.documentElement.classList.contains('lang-ar');
+    if (ar) main = main * 1.15;
+    return { main: main, sub: (ar ? sub * 1.15 : sub), pill: 11.4, /* cart pill -5% */
+             sFloor: (ar ? 9.6 : 11) / main };
+  }
+
+  function readNaturals() {
+    /* Engine OFF: computed values reflect the tier CSS in force at this
+       width (including the AR variants), so "natural" always means "what
+       this viewport already uses before compression". Same-tick reset =>
+       no visual flash. */
+    nav.classList.remove('h5-engine', 'h5-utils-menu');
+    for (var i = 0; i < VARS.length; i++) nav.style.removeProperty(VARS[i]);
+    void nav.offsetWidth; // reflow so reads see the reset
+    var cs = window.getComputedStyle;
+    function gapOf(el, fb) {
+      var g = parseFloat(cs(el).columnGap);
+      return (isFinite(g) && g > 0) ? g : fb;
+    }
+    var refs = fontRefs();
+    var n = {
+      g1: gapOf(leftG, 48),
+      g2: gapOf(deptBox, 22),
+      g3: gapOf(rightG, 18),
+      pill: PILL_NAT,
+      logoH: parseFloat(cs(logoImg).height) || 68.8,
+      pad: parseFloat(cs(row).paddingLeft) || 32,
+      refMain: refs.main, refSub: refs.sub, refPill: refs.pill,
+      sFloor: refs.sFloor
+    };
+    var lr = logoA.getBoundingClientRect();
+    n.logoRatio = lr.height > 0 ? (lr.width / lr.height) : 2.6;
+    return n;
+  }
+
+  function visibleUtils() {
+    var out = [], kids = rightG.children, i, el;
+    for (i = 0; i < kids.length; i++) {
+      el = kids[i];
+      if (el.nodeType !== 1) continue;
+      if (window.getComputedStyle(el).display !== 'none') out.push(el);
+    }
+    return out;
+  }
+
+  function configure(stage, nat, textScale) {
+    nav.classList.toggle('h5-utils-menu', stage.menu);
+    var logoH = Math.max(30, nat.logoH * stage.logo);
+    var ts = (typeof textScale === 'number') ? textScale : 1;
+    nav.style.setProperty('--h5-logo-h', logoH.toFixed(1) + 'px');
+    nav.style.setProperty('--h5-dept-font', (nat.refMain * ts * 0.95).toFixed(2) + 'px'); /* dept names -5% (desktop request) */
+    nav.style.setProperty('--h5-dept-sub-font', (nat.refSub * ts).toFixed(2) + 'px');
+    nav.style.setProperty('--h5-pill-font', (nat.refPill * ts).toFixed(2) + 'px');
+    return logoH;
+  }
+
+  /* Solve ONE ladder stage: keep the stage's logo step, then find the
+     LARGEST continuous text scale (department + pill together, floored at
+     the readable minimum) that fits the row with gaps at their floors.
+     Returns { s, fits } — fits=false means even the floor overflows. */
+  function solveStage(st, nat, deptKids) {
+    nav.classList.add('h5-engine'); // font vars only render with the class on
+    var logoH = configure(st, nat, 1);
+    var rowW = row.clientWidth;
+    var i, deptW, items, wu, pillOn;
+    function measure() {
+      void nav.offsetWidth; // apply the font vars before measuring
+      deptW = 0;
+      for (i = 0; i < deptKids.length; i++) deptW += deptKids[i].getBoundingClientRect().width;
+      items = visibleUtils();
+      wu = 0;
+      for (i = 0; i < items.length; i++) wu += items[i].getBoundingClientRect().width;
+      pillOn = pillEl && window.getComputedStyle(pillEl).display !== 'none';
+      var c2 = Math.max(0, deptKids.length - 1), c3 = Math.max(0, items.length - 1), c4 = pillOn ? 1 : 0;
+      var floorsTotal = FLOOR.logo + FLOOR.dept * c2 + FLOOR.util * c3 + FLOOR.pill * c4 + 2 * FLOOR.pad + CART_GAP;
+      return (logoH * nat.logoRatio + deptW + wu) + floorsTotal + BETWEEN - rowW; // >0 = overflow
+    }
+    /* Bisection that MAXIMIZES the scale: lo = largest scale known to fit,
+       hi = smallest known not to fit. Progressive by construction — the
+       scale moves in halving steps, never a jump to a tiny fixed size. */
+    var lo = 0, hi = 1, sc = 1, over = measure();
+    if (over > 0.5) { // reference fonts overflow -> find the largest scale that fits
+      for (var pass = 0; pass < 7; pass++) {
+        var mid = (lo + hi) / 2;
+        sc = Math.max(nat.sFloor, mid);
+        configure(st, nat, sc);
+        over = measure();
+        if (over <= 0.5) lo = sc; else hi = sc;
+        if (hi - lo < 0.01) break;
+      }
+      if (lo === 0) {
+        /* Nothing at/above the readable floor fits (pathologically wide
+           content). Zero overlap outranks the floor: bisect BELOW it so the
+           row still fits. Normal viewport-driven widths never reach this. */
+        hi = nat.sFloor;
+        for (var pass2 = 0; pass2 < 6; pass2++) {
+          var mid2 = (lo + hi) / 2;
+          configure(st, nat, mid2);
+          over = measure();
+          if (over <= 0.5) lo = mid2; else hi = mid2;
+          if (hi - lo < 0.005) break;
+        }
+        sc = lo > 0 ? lo : 0.35;
+      } else {
+        sc = lo; // largest fitting scale at/above the floor
+      }
+      configure(st, nat, sc);
+      return { s: sc, fits: lo > 0 };
+    }
+    configure(st, nat, 1);
+    return { s: 1, fits: true };
+  }
+
+  function apply(entry) {
+    if (!isDesktop()) { resetEngine(); return 0; }
+    if (!findNodes()) return 0;
+    var wasMenu = nav.classList.contains('h5-utils-menu'); // before readNaturals strips it
+    var nat = readNaturals();
+
+    var rowW = row.clientWidth; // includes the (scalable) horizontal padding
+    var deptKids = deptBox.children, i;
+
+    /* Ladder: [full] then [burger x logo steps]. Every stage carries its own
+       CONTINUOUS text scale — the font reduces progressively with the
+       viewport, never a fixed tiny "hamburger size". */
+    var stages = [{ menu: false, logo: LOGO_STEPS[0] }];
+    for (var l = 1; l < LOGO_STEPS.length; l++) stages.push({ menu: true, logo: LOGO_STEPS[l] });
+    var start = Math.max(0, Math.min(entry || 0, stages.length - 1));
+
+    /* Exit hysteresis (monotonic burger): leave the burger only when the
+       full row fits at the NORMAL font size with NATURAL gaps plus clear
+       slack. Otherwise skip the full stage and stay on the burger ladder. */
+    if (wasMenu && start === 0) {
+      configure(stages[0], nat, 1);
+      void nav.offsetWidth;
+      var dW0 = 0;
+      for (i = 0; i < deptKids.length; i++) dW0 += deptKids[i].getBoundingClientRect().width;
+      var its0 = visibleUtils(), wu0 = 0;
+      for (i = 0; i < its0.length; i++) wu0 += its0[i].getBoundingClientRect().width;
+      var pill0 = pillEl && window.getComputedStyle(pillEl).display !== 'none';
+      var natTot0 = nat.g1 + nat.g2 * (deptKids.length - 1) + nat.g3 * (its0.length - 1) + (pill0 ? nat.pill : 0) + 2 * nat.pad;
+      if (nat.logoH * nat.logoRatio + dW0 + wu0 + natTot0 + BETWEEN + EXIT_HYST > rowW) start = 1;
+    }
+
+    var done = null;
+    for (var s = start; s < stages.length; s++) {
+      var st = stages[s];
+      var r = solveStage(st, nat, deptKids);
+      /* The FULL row is kept only while the font stays >= FULL_MIN_S of
+         normal; below that the burger (which frees ~120px of utilities)
+         keeps the departments LARGER and more readable. */
+      var minS = st.menu ? nat.sFloor : Math.max(nat.sFloor, FULL_MIN_S);
+      if (r.fits && r.s >= minS - 0.005) { done = { st: st, ts: r.s }; break; }
+    }
+    if (!done) { // last resort: deepest stage at its solved scale
+      var r2 = solveStage(stages[stages.length - 1], nat, deptKids);
+      done = { st: stages[stages.length - 1], ts: r2.s };
+    }
+
+    /* Closing an open burger panel is a side effect of the FINAL stage only
+       (the measurement loop configures stage 0 before proving it unfit). */
+    configure(done.st, nat, done.ts);
+    if (!done.st.menu) burgerWrap.classList.remove('open');
+
+    /* Size the gaps/padding to FILL the row around the solved content:
+       proportional to the naturals, floored for safety; in burger mode they
+       may grow slightly ABOVE natural so no huge empty middle gap can open,
+       while full mode never exceeds natural (keeps the wide-desktop look). */
+    void nav.offsetWidth;
+    var dW2 = 0;
+    for (i = 0; i < deptKids.length; i++) dW2 += deptKids[i].getBoundingClientRect().width;
+    var items2 = visibleUtils(), wu2 = 0;
+    for (i = 0; i < items2.length; i++) wu2 += items2[i].getBoundingClientRect().width;
+    var pillOn2 = pillEl && window.getComputedStyle(pillEl).display !== 'none';
+    var fixed2 = Math.max(30, nat.logoH * done.st.logo) * nat.logoRatio + dW2 + wu2 + CART_GAP;
+    var c2 = Math.max(0, deptKids.length - 1), c3 = Math.max(0, items2.length - 1), c4 = pillOn2 ? 1 : 0;
+    var natTotal = nat.g1 + nat.g2 * c2 + nat.g3 * c3 + nat.pill * c4 + 2 * nat.pad + CART_GAP;
+    var budget2 = rowW - BETWEEN - fixed2;
+    var f2 = natTotal > 0 ? budget2 / natTotal : 1;
+    if (!isFinite(f2) || f2 < 0) f2 = 0;
+    var fCap = done.st.menu ? GAP_GROW_MAX : 1;
+    if (f2 > fCap) f2 = fCap;
+    var g1 = Math.max(FLOOR.logo, nat.g1 * f2),
+        g2 = Math.max(FLOOR.dept, nat.g2 * f2),
+        g3 = Math.max(FLOOR.util, nat.g3 * f2),
+        g4 = Math.max(FLOOR.pill, nat.pill * f2),
+        pad = Math.max(FLOOR.pad, nat.pad * f2);
+
+    /* Floor clamping can push the total slightly past the budget (a gap
+       whose natural*f2 fell below its floor is held AT the floor). Reduce
+       the above-floor headroom proportionally so the row fits exactly. */
+    var total2 = g1 + g2 * c2 + g3 * c3 + g4 * c4 + 2 * pad;
+    if (total2 > budget2 + 0.5) {
+      var reduce = (g1 - FLOOR.logo) + c2 * (g2 - FLOOR.dept) + c3 * (g3 - FLOOR.util) + c4 * (g4 - FLOOR.pill) + 2 * (pad - FLOOR.pad);
+      if (reduce > 0) {
+        var k = Math.min(1, (total2 - budget2) / reduce);
+        g1 -= (g1 - FLOOR.logo) * k;
+        g2 -= (g2 - FLOOR.dept) * k;
+        g3 -= (g3 - FLOOR.util) * k;
+        g4 -= (g4 - FLOOR.pill) * k;
+        pad -= (pad - FLOOR.pad) * k;
+      }
+    }
+
+    nav.style.setProperty('--h5-g-logo', g1.toFixed(1) + 'px');
+    nav.style.setProperty('--h5-g-dept', g2.toFixed(1) + 'px');
+    nav.style.setProperty('--h5-g-util', g3.toFixed(1) + 'px');
+    nav.style.setProperty('--h5-g-pill', g4.toFixed(1) + 'px');
+    nav.style.setProperty('--h5-row-px', pad.toFixed(1) + 'px');
+    nav.classList.add('h5-engine');
+    var chosen = stages.indexOf(done.st);
+    return chosen >= 0 ? chosen : 0;
+  }
+
+  /* ---------- rendered verification (language-aware safety net) ----------
+     The ladder above is predictive; font metric differences between
+     environments (Arabic fallback fonts render wider than the measured
+     expectation) can leave a few px of REAL overlap even when the math said
+     the stage fits. This checks the ACTUALLY RENDERED geometry — physical
+     boxes, so it works identically in LTR English and RTL Arabic — and the
+     runLadder() loop below escalates one stage deeper immediately when any
+     left-group item intrudes into any right-group item. */
+  function renderedOverlap() {
+    if (!row || !leftG || !rightG || !deptBox || !logoA) return false;
+    function boxes(nodes) {
+      var out = [];
+      for (var i = 0; i < nodes.length; i++) {
+        var el = nodes[i];
+        if (!el || el.nodeType !== 1) continue;
+        if (window.getComputedStyle(el).display === 'none') continue;
+        var r = el.getBoundingClientRect();
+        if (r.width > 0) out.push(r);
+      }
+      return out;
+    }
+    var L = boxes([logoA].concat([].slice.call(deptBox.children)));
+    var R = boxes(visibleUtils());
+    for (var i = 0; i < L.length; i++) {
+      for (var j = 0; j < R.length; j++) {
+        var ox = Math.min(L[i].right, R[j].right) - Math.max(L[i].left, R[j].left);
+        if (ox > 0.75) return true;
+      }
+    }
+    return false;
+  }
+
+  var STAGE_COUNT = LOGO_STEPS.length; // [full] + burger logo steps
+  function runLadder() {
+    var idx = apply(0), guard = 0;
+    while (guard++ < STAGE_COUNT) {
+      void nav.offsetWidth; // settle layout before verifying
+      if (!renderedOverlap()) break;
+      var next = Math.min(idx + 1, STAGE_COUNT - 1);
+      if (next <= idx) break;
+      idx = apply(next);
+    }
+  }
+
+  function resetEngine() {
+    nav.classList.remove('h5-engine', 'h5-utils-menu');
+    for (var i = 0; i < VARS.length; i++) nav.style.removeProperty(VARS[i]);
+    closeMenus();
+  }
+
+  /* ------------- triggers: measured, not breakpoint-guessed ------------- */
+  var raf = null;
+  function schedule() {
+    if (raf) return;
+    raf = requestAnimationFrame(function () { raf = null; runLadder(); });
+  }
+  if (window.ResizeObserver) {
+    var ro = new ResizeObserver(schedule);
+    ro.observe(nav.firstElementChild || nav);
+  }
+  window.addEventListener('resize', schedule);
+  window.addEventListener('orientationchange', schedule);
+  window.addEventListener('load', schedule);
+  /* Language change: the event fires when the NEW language is chosen, but
+     the i18n engine translates the DOM asynchronously (its own observers
+     flush in batches). Re-measure on the NEXT FRAMES — after the translated
+     Arabic/English text is actually present — and again whenever any header
+     text mutation settles (MutationObserver below, debounced). Never reuse
+     the previous language's measurements. */
+  window.addEventListener('nassim-langchange', function () {
+    syncLang();
+    schedule();
+    requestAnimationFrame(function () {
+      schedule();
+      requestAnimationFrame(schedule);
+    });
+  });
+  if (window.MutationObserver) {
+    var mutTimer = null;
+    var mo = new MutationObserver(function () {
+      clearTimeout(mutTimer);
+      mutTimer = setTimeout(schedule, 120); // translation batches settle -> one re-measure
+    });
+    /* childList + characterData only: the engine's own class/style writes
+       (attributes) must not retrigger it. Scope is the header, not the page. */
+    mo.observe(nav, { childList: true, characterData: true, subtree: true });
+  }
+  if (document.fonts && document.fonts.ready && document.fonts.ready.then) document.fonts.ready.then(schedule);
+  /* Late passes: i18n initial Arabic translation, icon fonts and carousel
+     assets can settle after load and change measured text widths. */
+  [300, 1200, 2600].forEach(function (t) { setTimeout(schedule, t); });
+
+  syncLang();
+  syncThemeIcon();
+  schedule();
+})();
+</script>
+<style>
+/* ===== home5 desktop-tier rules (ported, desktop-only) =================
+   home5.html gets these from assets/css/home5-mobile.css (loaded only by
+   home5). Copied here so the ported top nav measures and lays out exactly
+   like home5 at >=768px: icon-only desktop search, 18px utility gap,
+   22px department gap, no row wrap. Nothing below 768px is affected. ===== */
+@media (min-width: 768px) and (orientation: landscape) {
+  #desktop-inline-search { display: none !important; }
+  nav.glass-nav > div > div:last-child { gap: 18px !important; }
+  nav.glass-nav #home5-desktop-search-btn .material-symbols-outlined { font-size: 24px; }
+  nav.glass-nav div.gap-8 { gap: 42px !important; } /* 2026-10-25: dept gaps standardized to houseware2 reference (42px) */ /* 2026-10-25: aligned with houseware2 dept gap (was 22px) */
+  nav.glass-nav > div { flex-wrap: nowrap !important; }
+}
+</style>
+<style>
+/* ===== home5 search-popup styling (ported, desktop-only) =================
+   home5.html gets these rules from assets/css/home5-mobile.css (loaded only
+   by home5). Copied verbatim so the shared #nassim-search-overlay popup on
+   this page renders exactly like home5's: glass panel, pill input with the
+   search glyph, brown focus ring (no blue outline), round close button.
+   Desktop (>=768px) only; the shared search.js behavior is untouched. ===== */
+@media (min-width: 768px) and (orientation: landscape) {
+  /* Subtle translucent page tint only — hero stays clearly visible. */
+  #nassim-search-overlay {
+    background: rgba(247, 249, 255, 0.15) !important;
+    padding-top: 92px !important;
+    animation: h5searchFade 180ms ease !important;
+  }
+  @keyframes h5searchFade { from { opacity: 0; } to { opacity: 1; } }
+
+  /* Compact floating glass panel (collapses to ~68px tall when empty). */
+  #nassim-search-overlay > div {
+    background: rgba(248, 245, 240, 0.62) !important;
+    backdrop-filter: blur(22px) saturate(1.4) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(1.4) !important;
+    border: 1px solid rgba(255, 255, 255, 0.55) !important;
+    outline: 1px solid rgba(0, 3, 8, 0.05) !important;
+    border-radius: 22px !important;
+    box-shadow: 0 12px 36px rgba(0, 3, 8, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.45) !important;
+    max-width: 600px !important;
+    animation: h5searchDrop 180ms ease !important;
+  }
+  @keyframes h5searchDrop { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Input row: search glyph on the left, pill input, round close on the right. */
+  #nassim-search-overlay > div > div:first-child {
+    position: relative !important;
+    border-bottom: none !important;
+    padding: 12px 14px !important;
+    gap: 10px !important;
+  }
+  #nassim-search-overlay > div > div:first-child::before {
+    content: 'search';
+    font-family: 'Material Symbols Outlined';
+    font-size: 20px;
+    line-height: 1;
+    color: #44474b;
+    position: absolute;
+    left: 28px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+  #nassim-search-overlay input {
+    border: 1px solid rgba(0, 3, 8, 0.08) !important;
+    outline: none !important;
+    border-radius: 9999px !important;
+    background: rgba(255, 255, 255, 0.65) !important;
+    height: 40px !important;
+    padding-left: 42px !important;
+    padding-right: 16px !important;
+    font-size: 14px !important;
+    color: #111d27 !important;
+    box-shadow: inset 0 1px 2px rgba(0, 3, 8, 0.03) !important;
+  }
+  #nassim-search-overlay input::placeholder { color: rgba(17, 29, 39, 0.45) !important; }
+  #nassim-search-overlay input:focus {
+    outline: none !important;
+    border-color: rgba(130, 83, 53, 0.35) !important;
+    box-shadow: 0 0 0 3px rgba(130, 83, 53, 0.12) !important;
+  }
+  /* Round minimal close button. */
+  #nassim-search-overlay > div > div:first-child > button {
+    border-radius: 9999px !important;
+    width: 30px !important;
+    height: 30px !important;
+    flex: 0 0 auto !important;
+    background: rgba(255, 255, 255, 0.65) !important;
+    color: #44474b !important;
+    font-size: 13px !important;
+    border: 1px solid rgba(0, 3, 8, 0.06) !important;
+  }
+  #nassim-search-overlay > div > div:first-child > button:hover {
+    background: #e4efff !important;
+    color: #111d27 !important;
+  }
+
+  /* ARABIC (html.lang-ar): mirror the popup row — search glyph on the
+     RIGHT, close button on the LEFT, input text space on the right.
+     Matches the row dir=rtl set by search.js for Arabic. */
+  html.lang-ar #nassim-search-overlay > div > div:first-child::before {
+    left: auto !important;
+    right: 28px;
+  }
+  html.lang-ar #nassim-search-overlay input {
+    padding-left: 16px !important;
+    padding-right: 42px !important;
+  }
+
+  /* Results list: transparent panel continues; items keep their separators. */
+  #nassim-search-overlay > div > div:last-child { border-top: none !important; }
+}
+</style>
+<!-- END TOP NAV PORT (h5-topnav-ported) -->
+
+
+<!-- ===== Main Content (Order Sent — compact cart-style cards, order-send-modified2) ===== -->
+<style>
+  /* ---- scoped design (this page only) ---- */
+  #os-wrap { background: #FFFFFF; }
+  /* The order sheet is white; extend the SAME white across the entire page so
+     no second-colored area appears below the sheet. Dark mode keeps its own
+     page color. */
+  body { background-color: #FFFFFF !important; }
+  html.dark body { background-color: #0a0f14 !important; }
+  #os-wrap .os-container { max-width: 1200px; margin: 0 auto; padding: 130px 24px 80px; }
+  #os-wrap .os-eyebrow { display: flex; align-items: center; gap: 10px; }
+  #os-wrap .os-check { width: 26px; height: 26px; border-radius: 50%; background: #16a34a; color: #fff; display: flex; align-items: center; justify-content: center; }
+  /* the check circle sits INLINE beside the title text (same line) */
+  #os-wrap .os-title .os-check { display: inline-flex; vertical-align: middle; margin-inline-end: 12px; }
+  #os-wrap .os-check .material-symbols-outlined { font-size: 18px; }
+  #os-wrap .os-label { font-size: 13px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: #64748b; }
+  #os-wrap .os-title { font-size: 36px; font-weight: 800; color: #0f172a; margin: 14px 0 0; }
+  #os-wrap .os-important-notice { margin: 22px 0 0; background: #E8F5E9; border-radius: 12px; padding: 14px 18px; color: #1F2937; font-size: 15.4px; line-height: 1.65; }
+  html.lang-ar #os-wrap .os-important-notice { direction: rtl; text-align: right; }
+  @media (min-width: 768px) { html.lang-ar #os-wrap .os-important-notice { font-size: 17.71px; line-height: 1.65; } } /* AR desktop only: 15.4px x 1.15 */
+  /* Payment line inside the notice: subtle divider above, small wallet icon,
+     bold dark sentence. Flex mirrors automatically under html.lang-ar. */
+  #os-wrap .os-notice-pay { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(31, 41, 55, 0.14); }
+  #os-wrap .os-notice-pay .material-symbols-outlined { font-size: 18px; color: #1F2937; flex: 0 0 auto; }
+  #os-wrap .os-notice-pay-bullet { font-size: 18px; line-height: 1; color: #1F2937; flex: 0 0 auto; }
+  #os-wrap .os-notice-pay-text { font-weight: 700; color: #1F2937; overflow-wrap: anywhere; }
+  /* Arabic: the shared i18n runtime stamps the pay row with its RTL helper
+     classes (nassim-rtl-anchor = margin-left:auto, nassim-rtl-jc-end =
+     justify-content:flex-end), which shove the row/text to the LEFT. The
+     row's own direction:rtl already mirrors it correctly (icon far right,
+     sentence left of it, right-aligned) — so neutralise both helpers. */
+  html.lang-ar #os-wrap .os-notice-pay.nassim-rtl-anchor { margin-left: 0 !important; margin-right: 0 !important; }
+  html.lang-ar #os-wrap .os-notice-pay.nassim-rtl-jc-end { justify-content: flex-start !important; }
+  /* Arabic totals rows (Delivery Fee / Total): the row mirrors so the Arabic
+     label sits on the RIGHT and the amount cell on the LEFT. The amount cell
+     itself is forced LTR + isolated: the i18n runtime flattens the amount
+     into a plain "د.ك 0.000" text node and stamps .nassim-rtl on it, which
+     would render the currency to the right of the digits. LTR here keeps
+     د.ك on the LEFT of the number, together, without wrapping. */
+  html.lang-ar #os-wrap .os-trow { direction: rtl; }
+  html.lang-ar #os-wrap .os-trow .os-tval { direction: ltr !important; unicode-bidi: isolate !important; text-align: left !important; white-space: nowrap; }
+  /* The runtime also stamps the amount with nassim-rtl-anchor (margin-left:
+     auto), which in this RTL flex row packs the amount against the label.
+     Neutralise it so space-between puts the label on the RIGHT edge and the
+     amount on the LEFT edge, with the normal gap between them. */
+  html.lang-ar #os-wrap .os-trow .nassim-rtl-anchor { margin-left: 0 !important; margin-right: 0 !important; }
+  html.lang-ar #os-wrap .os-trow { gap: 16px; }
+  #os-wrap .os-meta-row { margin-top: 16px; font-size: 18px; color: #0f172a; text-align: center; }
+  #os-wrap .os-meta-row .material-symbols-outlined { font-size: 18px; vertical-align: -4px; color: #64748b; margin-right: 6px; }
+  #os-wrap .os-meta-row b { font-weight: 800; color: #0f172a; letter-spacing: 0.02em; }
+  #os-wrap .os-date { margin-top: 20px; font-size: 16px; color: #475569; text-align: right; }
+  #os-wrap .os-date .material-symbols-outlined { font-size: 18px; vertical-align: -4px; color: #64748b; margin-right: 6px; }
+  #os-wrap .os-msg { margin-top: 14px; font-size: 16px; line-height: 1.6; color: #475569; max-width: 640px; }
+  #os-wrap .os-msg-red { margin-top: 18px; font-size: 24px; line-height: 1.65; text-align: justify; background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 16px 20px; color: #7f1d1d; }
+  #os-wrap .os-section { font-size: 20px; font-weight: 800; color: #0f172a; margin: 40px 0 0; }
+  /* Order Items container: flat sibling cards, stacked from the left */
+  #os-wrap #os-items { display: flex; flex-direction: column; gap: 24px; align-items: stretch; margin-top: 20px; }
+  #os-wrap .os-card2 { background: #FFFFFF; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px 16px; min-height: 100px; display: flex; align-items: center; gap: 16px; }
+  /* card inner: image | info (name, Code/MODEL, Quantity) | price column (right) */
+  #os-wrap .os-card2 .os-inner { display: flex; flex-wrap: nowrap; gap: 20px; align-items: center; }
+  #os-wrap .os-img { width: 96px; height: 96px; flex: 0 0 auto; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  #os-wrap .os-img img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  #os-wrap .os-img .material-symbols-outlined { color: #cbd5e1; }
+  #os-wrap .os-info { flex: 1 1 auto; min-width: 0; }
+  #os-wrap .os-pname { font-size: 22px; font-weight: 700; color: #111827; line-height: 1.3; margin: 0 0 6px; }
+  #os-wrap .os-pcode { font-size: 13px; color: #334155; margin: 0; }
+  #os-wrap .os-meta-qty { font-size: 13px; color: #334155; margin: 0; }
+  /* Dark mode: the price-per-piece line currently renders near-white
+     (rgb(232,241,255)) — unreadable on the white card. Pin it to black.
+     Scoped to desktop (>=768px landscape) per request. */
+  @media (min-width: 768px) and (orientation: landscape) {
+    html.dark #os-wrap .os-piece { color: #000000 !important; }
+  }
+  /* price column: line total bold, unit price under it */
+  #os-wrap .os-meta { margin-left: auto; flex: 0 0 auto; text-align: right; display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
+  #os-wrap .os-meta .os-total-top { font-size: 20px; font-weight: 800; color: #111827; margin: 0; font-variant-numeric: tabular-nums; }
+  #os-wrap .os-meta .os-unit-piece { font-size: 12px; color: #94a3b8; margin: 0; }
+  #os-wrap .os-notice { margin-top: 48px; background: #eff6ff; border: 1px solid #dbeafe; border-radius: 12px; padding: 20px 24px; font-size: 16px; line-height: 1.65; color: #334155; }
+  #os-wrap .os-notice p { margin: 0 0 6px; } #os-wrap .os-notice p:last-child { margin-bottom: 0; }
+  #os-wrap .os-back { text-align: center; margin-top: 32px; }
+  #os-wrap .os-btn { display: inline-block; background: #0f172a; color: #fff; padding: 12px 22px; border-radius: 8px; font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; text-decoration: none; }
+  /* bottom sections: Delivery Address card + totals box */
+  #os-wrap .os-bottom { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; flex-wrap: wrap; margin-top: 24px; }
+  #os-wrap .os-bottom .os-card-blue { margin: 0; flex: 0 1 600px; max-width: 620px; }
+  #os-wrap .os-bottom .os-totals { margin: 0; flex: 1 1 320px; max-width: 520px; }
+  #os-wrap .os-card-blue { margin-top: 48px; max-width: 520px; background: #eff6ff; border: 1px solid #dbeafe; border-radius: 12px; padding: 22px 24px; }
+  #os-wrap .os-card-blue h2 { font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 14px; }
+  #os-wrap .os-card-blue .os-line { display: flex; align-items: flex-start; gap: 8px; font-size: 16px; color: #111827; padding: 6px 0; }
+  #os-wrap .os-card-blue .os-line .material-symbols-outlined { font-size: 18px; color: #64748b; margin-top: 1px; }
+  #os-wrap .os-totals { width: 100%; max-width: 520px; background: #FFFFFF; border: 1px solid #D5DFF0; border-radius: 12px; padding: 18px 22px; }
+  #os-wrap .os-trow { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; font-size: 17px; color: #111827; }
+  #os-wrap .os-trow + .os-trow { border-top: 1px solid #e2e8f0; }
+  #os-wrap .os-trow .os-tlabel { font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; font-size: 14px; color: #111827; }
+  #os-wrap .os-trow .os-tval { font-weight: 800; color: #0f172a; font-variant-numeric: tabular-nums; }
+  #os-wrap .os-btn:hover { background: #1e293b; }
+  /* Delivery Address card — redesigned to the reference: wide white card,
+     2px blue-grey border, tall header band with large pin tile, plain
+     bold-label rows for Name/Phone, then the address fields grouped in a
+     shaded two-column box with aligned colons. No side accent bars.
+     Overrides the generic .os-card-blue look for THIS card only. */
+  #os-wrap .os-delivery { background: #FFFFFF; border: 2px solid #D5DFF0; border-radius: 16px; padding: 0; overflow: hidden; box-shadow: 0 2px 12px rgba(15, 23, 42, 0.05); }
+  #os-wrap .os-delivery h2 { margin: 0; font-size: 19.5px; font-weight: 800; color: #0F1E3D; }
+  #os-wrap .os-da-head { display: flex; align-items: center; gap: 12px; background: #EFF4FD; padding: 10px 20px; min-height: 68px; box-sizing: border-box; }
+  #os-wrap .os-da-icon { width: 38px; height: 38px; border-radius: 10px; background: #DCE9FB; color: #2563EB; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+  #os-wrap .os-da-icon .material-symbols-outlined { font-size: 20px; }
+  #os-wrap .os-da-body { padding: 4px 20px 12px; }
+  /* Name/Phone side by side in ONE compact row; each group keeps its own
+     aligned colon column; bold labels, regular values, one line each;
+     a subtle vertical divider separates the two groups */
+  #os-wrap .os-da-toprow { display: flex; align-items: center; padding: 12px 0 14px; border-bottom: 1px solid #EEF1F7; }
+  #os-wrap .os-da-group { flex: 1 1 0; min-width: 0; display: grid; grid-template-columns: 56px 12px 1fr; column-gap: 5px; align-items: baseline; }
+  #os-wrap .os-da-group + .os-da-group { margin-inline-start: 26px; padding-inline-start: 26px; border-inline-start: 1px solid #E4E8EF; }
+  #os-wrap .os-da-label { font-size: 14px; font-weight: 700; color: #0F1E3D; white-space: nowrap; }
+
+  /* Email/Country row: this row's Arabic label ("البريد الإلكتروني") is far
+     wider than the 56px Name/Phone label track (labels are nowrap) and would
+     overlap the value. The row widens only its own label track so the two
+     groups' colons stay aligned in EN and AR; on small screens these groups
+     stack vertically, where the wider track still fits. Higher specificity
+     than the <=767px 78/64px override, so it wins at every width. */
+  #os-wrap .os-delivery #os-da-email-row .os-da-group { grid-template-columns: minmax(56px, max-content) 12px 1fr; }
+  #os-wrap .os-delivery #os-da-email-row .os-da-value { overflow-wrap: anywhere; }
+  #os-wrap .os-delivery #os-da-email-row .os-da-value { white-space: normal; }
+  #os-wrap .os-da-colon { font-size: 14px; color: #0F1E3D; }
+  #os-wrap .os-da-value { font-size: 14px; font-weight: 400; color: #0F1E3D; white-space: nowrap; overflow: hidden; text-overflow: clip; min-width: 0; }
+  /* Address details: shaded rounded container, two balanced columns with a
+     subtle vertical divider, aligned colons, values on one line */
+  #os-wrap .os-da-box { background: #F2F4F8; border-radius: 12px; padding: 10px 16px; margin-top: 8px; min-height: 132px; display: flex; align-items: stretch; }
+  #os-wrap .os-da-cols { display: flex; align-items: stretch; width: 100%; }
+  #os-wrap .os-da-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+  #os-wrap .os-da-vdiv { width: 1px; background: #DDE3EE; margin: 6px 18px; flex: 0 0 auto; }
+  #os-wrap .os-da-item { display: grid; grid-template-columns: 88px 12px 1fr; column-gap: 5px; align-items: baseline; padding: 7px 0; }
+  #os-wrap .os-da-item .os-da-label, #os-wrap .os-da-item .os-da-colon, #os-wrap .os-da-item .os-da-value { font-size: 13.5px; }
+  html.lang-ar #os-wrap .os-delivery .os-da-head,
+  html.lang-ar #os-wrap .os-delivery .os-da-toprow,
+  html.lang-ar #os-wrap .os-delivery .os-da-group,
+  html.lang-ar #os-wrap .os-delivery .os-da-cols,
+  html.lang-ar #os-wrap .os-delivery .os-da-item { direction: rtl; }
+  html.lang-ar #os-wrap .os-delivery .os-da-value { text-align: right; }
+  /* Arabic: mirror the bottom row like internal-orders2.html (whose <html>
+     carries dir=rtl): Delivery Address card on the RIGHT, Order Summary on
+     the LEFT, and the summary rows mirrored (label right, amount left).
+     This page only marks html.lang-ar, so the row needs explicit RTL. The
+     mobile stack (column, summary first) is unaffected by direction. */
+  html.lang-ar #os-wrap .os-bottom { direction: rtl; }
+  /* Arabic: neutralise the shared i18n runtime's RTL helper classes inside
+     the Delivery Address card (they stamp the header with jc-end / anchor,
+     pushing the icon+heading to the LEFT). The card's own direction:rtl
+     rules mirror the layout correctly — icon far right, heading left of
+     it; labels far right, colon then value to the left. */
+  html.lang-ar #os-wrap .os-delivery .nassim-rtl-jc-end,
+  html.lang-ar #os-wrap .os-delivery.nassim-rtl-jc-end { justify-content: flex-start !important; }
+  html.lang-ar #os-wrap .os-delivery .nassim-rtl-anchor,
+  html.lang-ar #os-wrap .os-delivery.nassim-rtl-anchor { margin-left: 0 !important; margin-right: 0 !important; }
+  html.lang-ar #os-wrap .os-delivery .nassim-rtl-fi-end { align-items: flex-start !important; }
+
+  /* Tablet: tighten gaps/padding BEFORE the columns ever stack */
+  @media (min-width: 768px) and (max-width: 1120px) {
+    #os-wrap .os-bottom { gap: 20px; }
+    #os-wrap .os-bottom .os-card-blue { flex: 0 1 540px; max-width: 580px; }
+    #os-wrap .os-delivery .os-da-head { padding: 8px 18px; min-height: 60px; }
+    #os-wrap .os-delivery .os-da-body { padding: 2px 18px 10px; }
+    #os-wrap .os-delivery .os-da-group + .os-da-group { margin-inline-start: 20px; padding-inline-start: 20px; }
+    #os-wrap .os-delivery .os-da-vdiv { margin: 6px 14px; }
+    #os-wrap .os-delivery .os-da-box { padding: 8px 14px; }
+  }
+  /* Delivery Address rows — Arabic RTL mirroring (this card only).
+     direction:rtl on the flex row mirrors its geometry: the icon sits at
+     the RIGHT edge, and the text block (label + separator + value, still
+     separate elements) fills the remaining width and right-aligns its
+     content — so the RIGHT EDGE of every complete row lands on the same
+     boundary. overflow-wrap lets a long address value wrap naturally
+     within its box without breaking the label/value relationship.
+     Customer values keep their own LTR isolation (see the ltr() wrapper).
+     Inert in English — rules exist only under html.lang-ar, so the LTR
+     layout is untouched and the toggle is live. */
+  html.lang-ar #os-wrap .os-delivery .os-line { direction: rtl; justify-content: flex-start; }
+  html.lang-ar #os-wrap .os-delivery .os-line > span:last-of-type { flex: 1 1 auto; text-align: right; overflow-wrap: break-word; }
+  html.lang-ar #os-wrap .os-delivery h2 { text-align: right; }
+
+  /* Structured address rows (Governorate/Area/…) — Arabic RTL mirroring.
+     Same right-aligned physical presentation as the other card rows;
+     customer values stay LTR-isolated (see order-address.js). */
+  html.lang-ar #os-wrap .os-addr-row { direction: rtl; text-align: right; overflow-wrap: break-word; }
+  #os-wrap .os-addr-row { overflow-wrap: break-word; }
+
+  /* Order items rows — mirrored in AR exactly like the Staff View Order
+     (internal-orders2.html, where #os-items inherits direction:rtl from the
+     runtime's group marks): image RIGHT, product info middle, price/total
+     block LEFT. Values inside keep their own bidi; inert in English. */
+  html.lang-ar #os-wrap #os-items { direction: rtl; }
+
+  /* ==== MOBILE-ONLY REDESIGN (≤767px) ====================================
+     Matches the reference layout: centered confirmation header with the
+     check icon above it, date + order number centered under it, product
+     card with a clean fixed image area and a readable flexible info area,
+     then Delivery Fee/Total DIRECTLY BELOW the items and ABOVE the
+     Delivery Address card (flex order swap inside .os-bottom), everything
+     full-width within the mobile margins so nothing clips or overflows.
+     Desktop (≥768px) is untouched — every rule here is inside the media
+     query. No content is added or removed; values stay the page's own. */
+  @media (max-width: 767px), (orientation: portrait) {
+    #os-wrap .os-container { padding: 104px 16px 56px; }
+
+    /* confirmation header: centered, check icon on its own line above */
+    #os-wrap .os-title {
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
+      text-align: center; font-size: 25px; line-height: 1.3;
+      margin: 0; text-wrap: balance;
+    }
+    #os-wrap .os-title .os-check { display: inline-flex; margin-inline-end: 0; width: 46px; height: 46px; }
+    #os-wrap .os-check .material-symbols-outlined { font-size: 28px; }
+
+    /* date + order number: centered, stacked, comfortably spaced */
+    #os-wrap .os-date { margin-top: 18px; text-align: center; font-size: 14px; }
+    #os-wrap .os-meta-row { margin-top: 6px; text-align: center; font-size: 15px; }
+    #os-wrap .os-meta-row .material-symbols-outlined { font-size: 16px; vertical-align: -3px; margin-right: 5px; }
+    #os-wrap .os-date .material-symbols-outlined { font-size: 16px; vertical-align: -3px; margin-right: 5px; }
+
+    /* product card: fixed clean image area + flexible info area, price
+       column right-aligned and separated */
+    #os-wrap .os-card2 { padding: 14px; gap: 12px; min-height: 0; align-items: center; }
+    #os-wrap .os-img { width: 76px; height: 76px; }
+    #os-wrap .os-pname { font-size: 15px; line-height: 1.4; margin: 0 0 4px; }
+    #os-wrap .os-piece { font-size: 12.5px; color: #334155; margin: 0 0 4px; }
+    #os-wrap .os-pcode, #os-wrap .os-meta-qty { font-size: 12px; margin: 0; }
+    #os-wrap .os-meta { margin-left: auto; gap: 4px; padding-inline-start: 8px; }
+    #os-wrap .os-meta .os-total-top { font-size: 17px; white-space: nowrap; }
+
+    /* section order: items → totals → address (totals visually first
+       inside .os-bottom without touching the DOM order desktop uses) */
+    #os-wrap .os-bottom { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
+    #os-wrap .os-bottom .os-totals { order: -1; flex: 0 0 auto; width: 100%; max-width: 100%; padding: 14px 18px; }
+    #os-wrap .os-bottom .os-card-blue { order: 0; flex: 0 0 auto; width: 100%; max-width: 100%; margin-top: 0; }
+    #os-wrap .os-bottom .os-card-blue.os-delivery { padding: 0; border-radius: 14px; }
+    #os-wrap .os-trow { padding: 10px 0; font-size: 15px; }
+    #os-wrap .os-trow .os-tlabel { font-size: 12.5px; }
+    /* Total row emphasized, Delivery Fee regular */
+    #os-wrap .os-trow + .os-trow .os-tval { font-size: 19px; color: #0f172a; }
+
+    /* delivery address card: full width; Name/Phone and the address columns
+       stack, values may wrap normally again (words never break mid-word) */
+    #os-wrap .os-delivery h2 { font-size: 18px; margin: 0; }
+    #os-wrap .os-delivery .os-da-head { padding: 12px 16px; min-height: 0; gap: 12px; }
+    #os-wrap .os-delivery .os-da-icon { width: 44px; height: 44px; border-radius: 10px; }
+    #os-wrap .os-delivery .os-da-icon .material-symbols-outlined { font-size: 24px; }
+    #os-wrap .os-delivery .os-da-body { padding: 6px 16px 14px; }
+    #os-wrap .os-delivery .os-da-toprow { flex-direction: column; align-items: stretch; gap: 7px; padding: 4px 0 10px; }
+    #os-wrap .os-delivery .os-da-group { grid-template-columns: 78px 12px 1fr; }
+    #os-wrap .os-delivery .os-da-group + .os-da-group { margin-inline-start: 0; padding-inline-start: 0; border-inline-start: 0; border-top: 1px solid #EEF1F7; padding-top: 8px; }
+    #os-wrap .os-delivery .os-da-label, #os-wrap .os-delivery .os-da-colon { font-size: 14.5px; }
+    #os-wrap .os-delivery .os-da-value { font-size: 14.5px; white-space: normal; overflow: visible; }
+    #os-wrap .os-delivery .os-da-box { padding: 8px 14px; margin-top: 10px; min-height: 0; }
+    #os-wrap .os-delivery .os-da-cols { flex-direction: column; }
+    #os-wrap .os-delivery .os-da-vdiv { width: auto; height: 1px; margin: 6px 0; }
+    #os-wrap .os-delivery .os-da-item { grid-template-columns: 82px 12px 1fr; padding: 7px 0; }
+    #os-wrap .os-card-blue .os-line { font-size: 14px; padding: 5px 0; }
+  }
+</style>
+<div id="os-wrap" style="background:#FFFFFF;">
+<div class="os-container">
+<div id="os-loading" style="padding:40px 0;text-align:center;color:#64748b;">Loading order…</div>
+<div id="os-error" style="display:none;padding:40px 0;text-align:center;color:#dc2626;font-size:18px;font-weight:600;"></div>
+<div id="os-main" style="display:none;">
+  <h1 class="os-title"><span class="os-check"><span class="material-symbols-outlined">check</span></span>YOUR ORDER HAS BEEN PLACED.</h1>
+  <div class="os-important-notice">Once the showroom team receives your order, they will contact you to schedule your delivery. They will also prepare your invoice, which will be delivered along with your items.
+    <div class="os-notice-pay"><span class="os-notice-pay-bullet">•</span><span class="os-notice-pay-text">Payment is to be made upon receiving your purchases.</span></div>
+  </div>
+  <div class="os-date"><span class="material-symbols-outlined">calendar_month</span>Date: <span id="os-date"></span></div>
+  <div class="os-meta-row">
+    <span class="material-symbols-outlined">receipt_long</span>Order Number : <b id="os-number"></b>
+  </div>
+  <h2 class="os-section" style="display:none">Order Items (<span id="os-count">0</span>)</h2>
+  <div id="os-items"></div>
+
+  <div class="os-bottom">
+    <div class="os-card-blue os-delivery">
+      <div class="os-da-head">
+        <span class="os-da-icon"><span class="material-symbols-outlined">location_on</span></span>
+        <h2>Delivery Address</h2>
+      </div>
+      <div class="os-da-body">
+        <div class="os-da-toprow">
+          <div class="os-da-group"><span class="os-da-label" id="os-name-label">Name</span><span class="os-da-colon">:</span><span class="os-da-value" id="os-name"></span></div>
+          <div class="os-da-group"><span class="os-da-label" id="os-phone-label">Phone</span><span class="os-da-colon">:</span><span class="os-da-value" id="os-phone"></span></div>
+        </div>
+        <div class="os-da-box" id="os-da-fields"></div>
+        <div class="os-line" id="os-da-legacy"><span class="material-symbols-outlined">location_on</span><span><span id="os-address-label">Address : </span><span id="os-address"></span></span></div>
+      </div>
+    </div>
+    <div class="os-totals">
+      <div class="os-trow"><span class="os-tlabel">Delivery Fee</span><span class="os-tval" id="os-shipping">KWD 0.000</span></div>
+      <div class="os-trow"><span class="os-tlabel">Total</span><span class="os-tval" id="os-total">KWD 0.000</span></div>
+    </div>
+  </div>
+
+
+  <div class="os-back"><a href="home5.html" class="os-btn">Back to Home Page</a></div>
+</div>
+</div>
+</div>
+<script>
+    /* ===== Account button ===== */
+    var acctBtn = document.getElementById('account-btn');
+    if (acctBtn) { acctBtn.style.cursor = 'pointer'; acctBtn.addEventListener('click', function() { if (window.NassimAccount) window.NassimAccount.openPanel(); }); }
+    /* ===== Order Sent — renders the placed order as FLAT SIBLING product
+       cards (each card fully closed inside its iteration — no nesting).
+       Data flow mirrors order-detail.html: __NASSIM_ORDER__ injection from
+       /o/{id}-{signature} links, or ?number=&token= fallback. Product clicks
+       do not navigate anywhere on this page. ===== */
+    document.addEventListener('DOMContentLoaded', function () {
+        function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+        function ltr(v) { return '<span dir="ltr" style="unicode-bidi:isolate;">' + v + '</span>'; }
+        function fmt(n) { return Number(n).toFixed(3); }
+
+        /* Delivery Address card — structured field rows (label box + value),
+           rendered LOCALLY in this page's look. The stored address string
+           and its parsing follow the SAME contract as the shared renderer
+           (assets/js/order-address.js, untouched): known "Label:" prefixes
+           split the comma-joined string; Governorate/Area VALUES resolve
+           through that shared module's resolveLocation (active language);
+           Arabic labels come from the central NASSIM_I18N map only. Orders
+           without labeled fields fall back to the exact legacy display. */
+        var DA_FIELDS = [
+            { key: 'Governorate', keys: ['governorate *', 'governorate'] },
+            { key: 'Area', keys: ['area *', 'area'] },
+            { key: 'Block', keys: ['block *', 'block'] },
+            { key: 'Street', keys: ['street *', 'street'] },
+            { key: 'Building', keys: ['building', 'building no.'] },
+            { key: 'Floor', keys: ['floor'] },
+            { key: 'Apartment', keys: ['apartment'] },
+            { key: 'Landmark', keys: ['landmark (optional)', 'landmark'] }
+        ];
+        function daNorm(s) { return String(s == null ? '' : s).normalize('NFC').replace(/\s+/g, ' ').trim().toLowerCase(); }
+        function daArActive() {
+            /* Active-language check that does not race the i18n runtime on
+               initial load: the stored preference is authoritative before
+               document.lang flips. */
+            try { if ((localStorage.getItem('nassim-lang') || '') === 'ar') return true; } catch (e) {}
+            return document.documentElement.lang === 'ar';
+        }
+        function daLabel(keys, fallback) {
+            if (!daArActive() || !window.NASSIM_I18N) return fallback;
+            for (var i = 0; i < keys.length; i++) {
+                var v = window.NASSIM_I18N[daNorm(keys[i])] || window.NASSIM_I18N[keys[i]];
+                if (v) return v.replace(/\s*\*/g, '').replace(/\s*\([^)]*\)\s*$/, '').replace(/\s*:\s*$/, '').trim();
+            }
+            return fallback;
+        }
+        function renderDaFields(o) {
+            var s = String((o || {}).address || '');
+            var re = new RegExp('(^|,)\\s*(' + DA_FIELDS.map(function (f) { return f.key; }).join('|') + ')\\s*:', 'gi');
+            var marks = [], m;
+            while ((m = re.exec(s)) !== null) marks.push({ start: m.index, label: m[2], vs: m.index + m[0].length });
+            var items = [];
+            for (var i = 0; i < marks.length; i++) {
+                var end = i + 1 < marks.length ? marks[i + 1].start : s.length;
+                var v = s.slice(marks[i].vs, end).trim();
+                if (!v) continue;
+                var f = null;
+                for (var j = 0; j < DA_FIELDS.length; j++) if (DA_FIELDS[j].key === marks[i].label) f = DA_FIELDS[j];
+                if (f && (f.key === 'Governorate' || f.key === 'Area') && window.NassimOrderAddress) {
+                    v = window.NassimOrderAddress.resolveLocation(v);
+                }
+                items.push('<div class="os-da-item"><span class="os-da-label">' + esc(f ? daLabel(f.keys, f.key) : marks[i].label) + '</span><span class="os-da-colon">:</span><span class="os-da-value">' + ltr(esc(v)) + '</span></div>');
+            }
+            /* Two columns in stored order — first half left, rest right
+               (Governorate/Area/Block left, Street/Building/Floor right for
+               a normal six-field order); a subtle vertical divider between. */
+            var half = Math.ceil(items.length / 2);
+            function col(list) { return '<div class="os-da-col">' + list.join('') + '</div>'; }
+            return '<div class="os-da-cols">' + col(items.slice(0, half)) + '<div class="os-da-vdiv"></div>' + col(items.slice(half)) + '</div>';
+        }
+        function itemCode(name) {
+            var m = String(name || '').match(/al-nassim-([A-Za-z]+-\d+)/i);
+            if (m) return m[1];
+            var parts = String(name || '').split('-');
+            var tail = parts[parts.length - 1];
+            return /[A-Za-z]-?\d/.test(tail) ? tail.trim() : '';
+        }
+        /* Derive a code from the item slug when the name has none (e.g. "28-815-al-nassim-nd-1197" -> "ND-1197"). */
+        function slugCode(slug) {
+            var m = String(slug || '').match(/([a-z]{1,6})-(\d+)\s*$/i);
+            return m ? (m[1] + '-' + m[2]).toUpperCase() : '';
+        }
+        function render(o) {
+            document.getElementById('os-number').innerHTML = ltr(esc(o.orderNumber));
+            var d = new Date(o.createdAt);
+            var pad = function (x) { return String(x).padStart(2, '0'); };
+            document.getElementById('os-date').textContent = pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear();
+            var items = o.items || [];
+            document.getElementById('os-count').textContent = items.length;
+            var runningTotal = 0;
+            var html = '';
+            items.forEach(function (i) {
+                var lineTotal = Number(i.price) * Number(i.quantity);
+                runningTotal += lineTotal;
+                html += '<div class="os-card2" data-product-wired="1">' +
+                    '<div class="os-img">' + (i.image ? '<img src="' + esc(i.image) + '" alt="' + esc(i.name) + '"/>' : '<span class="material-symbols-outlined">image</span>') + '</div>' +
+                    '<div class="os-info">' +
+                    '<h3 class="os-pname">' + esc(i.name) + '</h3>' +
+                    '<p class="os-piece">' + ((function(){ var a=false; try { a = (localStorage.getItem('nassim-lang')==='ar') || document.documentElement.lang==='ar'; } catch(e){} return a; }()) ? '<span style="direction:ltr;unicode-bidi:isolate;white-space:nowrap;">د.ك‎ ' + fmt(i.price) + '</span> / <span>قطعة</span>' : 'KD ' + fmt(i.price) + '/<span>piece</span>') + '</p>' +
+                    '<p class="os-pcode" data-slug="' + esc(i.slug || '') + '">Code/MODEL : ' + ltr(esc(itemCode(i.name) || slugCode(i.slug) || '\u2014')) + '</p>' +
+                    '<p class="os-meta-qty">Quantity: <b>' + i.quantity + '</b></p>' +
+                    '</div>' +
+                    '<div class="os-meta">' +
+                    '<p class="os-total-top">' + ((function(){ var a=false; try { a = (localStorage.getItem('nassim-lang')==='ar') || document.documentElement.lang==='ar'; } catch(e){} return a; }()) ? '<span style="direction:ltr;unicode-bidi:isolate;white-space:nowrap;">د.ك‎ ' + fmt(lineTotal) + '</span>' : 'KD ' + fmt(lineTotal)) + '</p>' +
+
+                    '</div>' +
+                    '</div>';
+            });
+            document.getElementById('os-items').innerHTML = html;
+            var total = fmt(runningTotal), shipping = '0.000';
+            document.getElementById('os-total').innerHTML = (function(){ var a=false; try { a = (localStorage.getItem('nassim-lang')==='ar') || document.documentElement.lang==='ar'; } catch(e){} return a; }()) ? '<span style="direction:ltr;unicode-bidi:isolate;white-space:nowrap;">د.ك‎ ' + total + '</span>' : 'KWD ' + total;
+            document.getElementById('os-shipping').innerHTML = (function(){ var a=false; try { a = (localStorage.getItem('nassim-lang')==='ar') || document.documentElement.lang==='ar'; } catch(e){} return a; }()) ? '<span style="direction:ltr;unicode-bidi:isolate;white-space:nowrap;">د.ك‎ ' + shipping + '</span>' : 'KWD ' + shipping;
+            document.getElementById('os-name').textContent = o.customerName || '';
+            document.getElementById('os-name-label').textContent = daLabel(['Name :', 'name :', 'name'], 'Name');
+            document.getElementById('os-phone').innerHTML = ltr(esc(window.NassimOrderAddress ? window.NassimOrderAddress.formatPhone(o.customerPhone) : (o.customerPhone || '')));
+            document.getElementById('os-phone-label').textContent = daLabel(['phone', 'phone :'], 'Phone');
+
+            /* Email and Country render INDEPENDENTLY: each field appears only when its
+               own value exists, and the presence of one never affects the other.
+               Email comes from the order (customerEmail, optional at checkout).
+               Country comes from the order data (country) when present, otherwise from
+               the checkout country selector value carried on the phone input
+               (data-cname); checkout requires a country and offers Kuwait only.
+               Rendered in the same os-da-group style as Name/Phone; when only one of
+               the two exists its group fills the row (no blank placeholder). */
+            var daEmail = String((o || {}).customerEmail || '').trim();
+            var daCountry = String((o || {}).country || '').trim();
+            try {
+              var daPhoneEl = document.getElementById('cust-phone');
+              if (daPhoneEl && daPhoneEl.getAttribute('data-cname')) daCountry = daPhoneEl.getAttribute('data-cname');
+            } catch (e) {}
+            var daTop = document.querySelector('.os-delivery .os-da-toprow');
+            if (daTop) {
+              var daEmailRow = document.getElementById('os-da-email-row');
+              var daHtml = '';
+              if (daEmail) daHtml +=
+                '<div class="os-da-group"><span class="os-da-label" id="os-email-label">Email</span><span class="os-da-colon">:</span><span class="os-da-value" id="os-email"></span></div>';
+              if (daCountry) daHtml +=
+                '<div class="os-da-group"><span class="os-da-label" id="os-country-label">Country</span><span class="os-da-colon">:</span><span class="os-da-value" id="os-country"></span></div>';
+              if (daHtml) {
+                if (!daEmailRow) {
+                  daEmailRow = document.createElement('div');
+                  daEmailRow.id = 'os-da-email-row';
+                  daEmailRow.className = 'os-da-toprow';
+                  daEmailRow.style.borderTop = 'none';
+                  daTop.parentNode.insertBefore(daEmailRow, daTop.nextSibling);
+                }
+                daEmailRow.innerHTML = daHtml;
+                if (daEmail) {
+                  document.getElementById('os-email').innerHTML = ltr(esc(daEmail));
+                  document.getElementById('os-email-label').textContent = daLabel(['email (optional)', 'email'], 'Email');
+                }
+                if (daCountry) {
+                  document.getElementById('os-country').textContent = daArActive() ? 'الكويت' : daCountry;
+                  document.getElementById('os-country-label').textContent = daLabel(['country *', 'country'], 'Country');
+                }
+              } else if (daEmailRow) {
+                daEmailRow.parentNode.removeChild(daEmailRow);
+              }
+            }
+            // Delivery Address card rows. Structured (labeled) orders render
+            // as label/value rows via the page-local renderer above; legacy
+            // free-text orders keep the exact previous display. Values are
+            // rendered exactly as stored — nothing derived.
+            var structured = window.NassimOrderAddress && window.NassimOrderAddress.isStructured(o);
+            document.getElementById('os-da-fields').style.display = structured ? '' : 'none';
+            document.getElementById('os-da-fields').innerHTML = structured ? renderDaFields(o) : '';
+            document.getElementById('os-da-legacy').style.display = structured ? 'none' : '';
+            document.getElementById('os-address-label').style.display = structured ? 'none' : '';
+            document.getElementById('os-address').innerHTML = window.NassimOrderAddress
+                ? window.NassimOrderAddress.renderHtml(o)
+                : ltr(esc((o.address || '') + (o.city ? ', ' + o.city : '')));
+            document.getElementById('os-loading').style.display = 'none';
+            document.getElementById('os-main').style.display = 'block';
+            window.__lastOrder = o;
+        }
+        // Live language toggle: re-render the whole order view so every
+        // dynamically written value (address prefixes, totals, labels) is
+        // regenerated in the active language. The delay lets the i18n
+        // runtime finish its own applyAr/restoreEn pass first; its observer
+        // then re-applies approved translations to the re-rendered English
+        // text (no strings are authored here).
+        window.addEventListener('nassim-langchange', function () {
+            setTimeout(function () { if (window.__lastOrder) render(window.__lastOrder); }, 150);
+        });
+        function fail(msg) {
+            document.getElementById('os-loading').style.display = 'none';
+            var e = document.getElementById('os-error');
+            e.textContent = msg;
+            e.style.display = 'block';
+        }
+        if (window.__NASSIM_ORDER__ && window.__NASSIM_ORDER__.success) { render(window.__NASSIM_ORDER__.data.order); return; }
+        var params = new URLSearchParams(window.location.search);
+        var num = params.get('number');
+        var token = params.get('token');
+        if (!num) { fail('No order specified.'); return; }
+        var url = '/api/orders/' + encodeURIComponent(num) + '?by=number' + (token ? '&token=' + encodeURIComponent(token) : '');
+        fetch(url, { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (!d.success) { fail(d.error || 'Order not found'); return; }
+                render(d.data.order);
+            })
+            .catch(function () { fail('Network error. Please check your connection and try again.'); });
+    });
+</script>
+
+<!-- ==================== MOBILE BOTTOM NAVIGATION ====================
+     Reuses existing systems — no duplication:
+       Home -> home5.html, Categories -> existing mobile drawer (mobile-nav.js),
+       Account -> window.NassimAccount.openPanel(), Cart -> cart.html.
+     Implemented as <div role="navigation"> (not <nav>) so the auto-wiring in
+     cart-nav.js / account.js / search.js is NOT re-triggered here. -->
+<style>
+    #mobile-bottom-nav-inner { padding-bottom: env(safe-area-inset-bottom); }
+    /* MOBILE ONLY: bigger bottom-nav labels — same as houseware.html: the
+       Tailwind text-[9px] utility is bumped to 12px (!important beats the
+       utility). The nav keeps its fixed 62.5px height, so only the label
+       size changes; icons stay 24px. */
+    #mobile-bottom-nav .mbnav-item .font-headline { font-size: 12px !important; }
+    .mbnav-item { color: #44474b; }
+    .dark .mbnav-item { color: rgba(255,255,255,0.6); }
+    .mbnav-item:hover { color: #825335; }
+    .dark .mbnav-item:hover { color: #f7b994; }
+    .mbnav-item.mbnav-active { color: #825335; }
+    .dark .mbnav-item.mbnav-active { color: #f7b994; }
+    .mbnav-item.mbnav-active .material-symbols-outlined {
+        font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    @media (max-width: 767px), (orientation: portrait) {
+        body { padding-bottom: calc(3.75rem + env(safe-area-inset-bottom)); }
+    }
+</style>
+<div id="mobile-bottom-nav" role="navigation" aria-label="Mobile" class="mbnav-vv md:hidden fixed inset-x-0 bottom-0 z-[90] glass-nav dark:bg-[#0a0f14]/90 border-t border-outline-variant/30 shadow-[0_-20px_40px_rgba(0,3,8,0.04)]">
+    <div id="mobile-bottom-nav-inner" class="grid grid-cols-3 items-stretch max-w-screen-sm mx-auto">
+        <button type="button" data-mbnav="home" class="mbnav-item flex flex-col items-center justify-center gap-1 py-2.5 transition-colors">
+            <span class="material-symbols-outlined" style="font-size:24px;">home</span>
+            <span class="font-headline text-[9px] font-bold uppercase tracking-[0.15em]">Home</span>
+        </button>
+        <button type="button" data-mbnav="categories" class="mbnav-item flex flex-col items-center justify-center gap-1 py-2.5 transition-colors">
+            <span class="material-symbols-outlined" style="font-size:24px;">grid_view</span>
+            <span id="mbnav-categories-label" class="font-headline text-[9px] font-bold uppercase tracking-[0.15em]" data-en="Categories" data-ar="فئات المنتجات">Categories</span>
+        </button>
+        <button type="button" data-mbnav="cart" class="mbnav-item relative flex flex-col items-center justify-center gap-1 py-2.5 transition-colors">
+            <span class="relative inline-flex">
+                <span class="material-symbols-outlined" style="font-size:24px;">shopping_cart</span>
+                <span id="header-cart-count" class="absolute -top-1.5 -right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-secondary text-white text-[9px] font-bold flex items-center justify-center leading-none" style="display:none;">00</span>
+            </span>
+            <span class="font-headline text-[9px] font-bold uppercase tracking-[0.15em]">Cart</span>
+        </button>
+    </div>
+</div>
+<script>
+    (function () {
+        function ready(fn) {
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+            else fn();
+        }
+        ready(function () {
+            var nav = document.getElementById('mobile-bottom-nav');
+            if (!nav || nav.dataset.bound) return;
+            nav.dataset.bound = '1';
+
+            var path = (location.pathname.split('/').pop() || location.pathname || '').toLowerCase();
+            var onHome = (path === '' || path === 'home5.html' || path === 'index.html');
+            var homeBtn = nav.querySelector('[data-mbnav="home"]');
+            if (homeBtn && onHome) homeBtn.classList.add('mbnav-active');
+
+            if (homeBtn) homeBtn.addEventListener('click', function () {
+                if (onHome) return;
+                window.location.href = 'home5.html';
+            });
+
+            var catBtn = nav.querySelector('[data-mbnav="categories"]');
+            if (catBtn) catBtn.addEventListener('click', function () {
+                var slot = document.getElementById('hamburger-slot');
+                if (slot) slot.click();
+            });
+
+            var accBtn = nav.querySelector('[data-mbnav="account"]');
+            if (accBtn) accBtn.addEventListener('click', function () {
+                if (window.NassimAccount && window.NassimAccount.openPanel) window.NassimAccount.openPanel();
+            });
+
+            var cartBtn = nav.querySelector('[data-mbnav="cart"]');
+            if (cartBtn) cartBtn.addEventListener('click', function () {
+                window.location.href = 'cart.html';
+            });
+
+            var badge = document.getElementById('header-cart-count');
+            function syncBadge() {
+                if (!badge) return;
+                var n = parseInt((badge.textContent || '').trim(), 10);
+                badge.style.display = (isNaN(n) || n <= 0) ? 'none' : 'flex';
+            }
+            syncBadge();
+            if (badge && window.MutationObserver) {
+                new MutationObserver(syncBadge).observe(badge, { childList: true, characterData: true, subtree: true });
+            }
+            window.addEventListener('pageshow', syncBadge);
+            window.addEventListener('storage', syncBadge);
+        });
+    })();
+</script>
+<script src="assets/js/theme.js" defer></script>
+<script src="assets/js/dark-overrides.js?v=20261030b" defer></script>
+<script src="assets/js/cart-nav.js?v=3" defer></script>
+<script src="assets/js/product-nav.js" defer></script>
+<script src="assets/js/listing-pagination.js?v=4" defer></script>
+<script src="assets/js/search.js" defer></script>
+<script src="assets/js/account.js" defer></script>
+<script src="assets/js/nav-submenu.js?v=3" defer></script>
+<script src="assets/js/mobile-nav.js?v=2" defer></script>
+<!-- ==================== MOBILE SEARCH WIRING ====================
+     Wires the mobile inline search bar to a dropdown below the input. Reuses
+     NassimSearch filtering logic; does NOT open the old overlay popup. -->
+<script>
+    (function () {
+        var mobileResults = null;
+
+        function createMobileResults() {
+            mobileResults = document.createElement('div');
+            mobileResults.id = 'mobile-search-dropdown';
+            mobileResults.style.cssText = 'position:absolute;top:100%;left:0;right:0;z-index:200;background:#fff;color:#111;border-radius:0 0 12px 12px;box-shadow:0 8px 24px rgba(0,0,0,0.18);max-height:60vh;overflow-y:auto;display:none;';
+            var form = document.getElementById('mobile-inline-search');
+            if (form) form.appendChild(mobileResults);
+            return mobileResults;
+        }
+
+        function renderMobileResults(list) {
+            if (!mobileResults) mobileResults = createMobileResults();
+            mobileResults.innerHTML = '';
+            if (!list || !list.length) {
+                var empty = document.createElement('p');
+                empty.style.cssText = 'padding:16px;text-align:center;color:#888;font-size:13px;';
+                empty.textContent = 'No products found';
+                mobileResults.appendChild(empty);
+                mobileResults.style.display = 'block';
+                return;
+            }
+            list.slice(0, 15).forEach(function (p) {
+                var a = document.createElement('a');
+                a.href = 'product-view.html?id=' + encodeURIComponent(p.id);
+                a.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;text-decoration:none;color:inherit;border-bottom:1px solid rgba(0,0,0,0.06);';
+                a.onmouseenter = function () { a.style.background = 'rgba(0,0,0,0.04)'; };
+                a.onmouseleave = function () { a.style.background = ''; };
+
+                var img = document.createElement('img');
+                img.src = p.img || p.image || (p.images && p.images[0]) || '';
+                img.alt = p.name;
+                img.style.cssText = 'width:40px;height:40px;object-fit:cover;border-radius:8px;background:#f2f2f2;flex-shrink:0;';
+                img.onerror = function () { img.style.visibility = 'hidden'; };
+
+                var info = document.createElement('div');
+                info.style.cssText = 'min-width:0;flex:1;';
+                var name = document.createElement('div');
+                if (window.NassimProductName) NassimProductName.apply(name, p); else name.textContent = p.name;
+                name.style.cssText = 'font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+                var meta = document.createElement('div');
+                meta.textContent = (p.line ? p.line + ' · ' : '') + Number(p.price).toFixed(3) + ' ' + (p.currency || 'KD');
+                meta.style.cssText = 'font-size:11px;color:#777;';
+                info.appendChild(name);
+                info.appendChild(meta);
+
+                a.appendChild(img);
+                a.appendChild(info);
+                mobileResults.appendChild(a);
+            });
+            mobileResults.style.display = 'block';
+        }
+
+        function closeMobileResults() {
+            if (mobileResults) mobileResults.style.display = 'none';
+        }
+
+        function doMobileSearch(q) {
+            var ns = window.NassimSearch;
+            if (!ns || !ns.loadProducts) return;
+            q = q.trim().toLowerCase();
+            ns.loadProducts().then(function (list) {
+                if (!q) { closeMobileResults(); return; }
+                var terms = q.split(/\s+/);
+                var filtered = list.filter(function (p) {
+                    var hay = ((p.name || '') + ' ' + (p.nameAr || '') + ' ' + (p.line || '') + ' ' + (p.sku || '') + ' ' + (p.description || '')).toLowerCase();
+                    return terms.every(function (t) { return hay.indexOf(t) !== -1; });
+                });
+                renderMobileResults(filtered);
+            });
+        }
+
+        function bind() {
+            var form = document.getElementById('mobile-inline-search');
+            if (!form || form.dataset.bound) return;
+            form.dataset.bound = '1';
+            var input = document.getElementById('mobile-inline-search-input');
+
+            createMobileResults();
+
+            if (input) {
+                var debounce = null;
+                input.addEventListener('input', function () {
+                    clearTimeout(debounce);
+                    debounce = setTimeout(function () {
+                        doMobileSearch(input.value);
+                    }, 150);
+                });
+                input.addEventListener('focus', function () {
+                    if (input.value.trim()) doMobileSearch(input.value);
+                });
+            }
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                if (input && input.value.trim()) doMobileSearch(input.value);
+            });
+
+            document.addEventListener('click', function (e) {
+                if (mobileResults && !form.contains(e.target)) {
+                    closeMobileResults();
+                }
+            });
+        }
+
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+        else bind();
+    })();
+</script>
+<!-- ==================== MOBILE CATEGORIES DRAWER: NAME = LINK, ARROW = TOGGLE ======
+     Splits the department header so the NAME navigates and the ARROW only
+     expands/collapses. Reuses mobile-nav.js's existing toggle listener and the
+     desktop nav's existing hrefs — no new links, no duplicated JS. -->
+<script>
+    (function () {
+        function ready(fn) {
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+            else fn();
+        }
+
+        function buildDeptHrefMap() {
+            var map = {};
+            var triggers = document.querySelectorAll('.dropdown-trigger');
+            triggers.forEach(function (t) {
+                var link = t.querySelector('a');
+                if (!link) return;
+                var name = '';
+                for (var i = 0; i < link.childNodes.length; i++) {
+                    var n = link.childNodes[i];
+                    if (n.nodeType === 3 || n.nodeType === 1) {
+                        var txt = n.textContent.trim();
+                        if (txt) name += (name ? ' ' : '') + txt;
+                    }
+                }
+                if (name && link.href) { map[name.toLowerCase()] = link.getAttribute('href'); hrefOrder.push(link.getAttribute('href')); }
+            });
+            if (triggers.length > 0) {
+                var sib = triggers[triggers.length - 1].nextElementSibling;
+                while (sib) {
+                    if (sib.tagName === 'A' && !sib.classList.contains('dropdown-trigger')) {
+                        var parts = [];
+                        for (var j = 0; j < sib.childNodes.length; j++) {
+                            var nn = sib.childNodes[j];
+                            if (nn.nodeType === 3 || nn.nodeType === 1) {
+                                var tt = nn.textContent.trim();
+                                if (tt) parts.push(tt);
+                            }
+                        }
+                        var nm = parts.join(' ');
+                        if (nm && sib.getAttribute('href')) map[nm.toLowerCase()] = sib.getAttribute('href');
+                    }
+                    sib = sib.nextElementSibling;
+                }
+            }
+            return map;
+        }
+
+        var hrefMap = {};
+        var hrefOrder = []; /* desktop trigger hrefs in DOM order (positional fallback) */
+
+        function hrefForName(rawName) {
+            if (!rawName) return null;
+            /* ARABIC-SAFE MATCH: the old code stripped [^a-z0-9], which deleted
+               every Arabic letter — an Arabic department name collapsed to ""
+               and matched the first (also empty) map key, sending EVERY Arabic
+               department to houseware.html. Match in two passes and never
+               compare against an empty normalization. */
+            var alnum = rawName.toLowerCase().replace(/[^a-z0-9]/g, '');
+            var spaced = rawName.toLowerCase().replace(/\s+/g, ' ').trim();
+            var keys = Object.keys(hrefMap);
+            if (alnum) {
+                for (var i = 0; i < keys.length; i++) {
+                    if (keys[i].replace(/[^a-z0-9]/g, '') === alnum) return hrefMap[keys[i]];
+                }
+            }
+            if (spaced) {
+                for (var j = 0; j < keys.length; j++) {
+                    if (keys[j].toLowerCase().replace(/\s+/g, ' ').trim() === spaced) return hrefMap[keys[j]];
+                }
+            }
+            return null;
+        }
+
+        function transformItems() {
+            var dept = document.getElementById('mobile-nav-departments');
+            if (!dept) return;
+            var triggers = dept.querySelectorAll('.mobile-accordion-trigger');
+            triggers.forEach(function (trigger) {
+                if (trigger.getAttribute('data-name-linked') === '1') return;
+                var nameSpan = trigger.querySelector('span.flex.flex-col');
+                if (!nameSpan) { trigger.setAttribute('data-name-linked', '1'); return; }
+                var deptName = nameSpan.textContent.replace(/\s+/g, ' ').trim();
+                var href = hrefForName(deptName);
+                /* positional fallback: drawer departments are built from the
+                   desktop triggers in the same DOM order, so data-index
+                   resolves the right department page even if the name match
+                   fails on a language-timing edge case. */
+                if (!href) {
+                    var idx = parseInt(trigger.getAttribute('data-index'), 10);
+                    if (!isNaN(idx) && hrefOrder[idx]) href = hrefOrder[idx];
+                }
+                if (!href) { trigger.setAttribute('data-name-linked', '1'); return; }
+                var a = document.createElement('a');
+                a.href = href;
+                a.className = nameSpan.className;
+                a.innerHTML = nameSpan.innerHTML;
+                a.addEventListener('click', function (e) { e.stopPropagation(); }, true);
+                nameSpan.parentNode.replaceChild(a, nameSpan);
+                trigger.setAttribute('data-name-linked', '1');
+            });
+        }
+
+        function setupObserver() {
+            var dept = document.getElementById('mobile-nav-departments');
+            if (!dept) return false;
+            transformItems();
+            if (window.MutationObserver && !dept.dataset.splitObs) {
+                dept.dataset.splitObs = '1';
+                new MutationObserver(function () { transformItems(); })
+                    .observe(dept, { childList: true, subtree: true });
+            }
+            return true;
+        }
+
+        ready(function () {
+            hrefMap = buildDeptHrefMap();
+            var tries = 0;
+            (function poll() {
+                if (setupObserver()) return;
+                if (++tries > 60) return;
+                setTimeout(poll, 50);
+            })();
+        });
+    })();
+</script>
+<!-- ==================== MOBILE DRAWER CONTENT SPLIT ====================
+     Hamburger -> utilities ONLY (EN|AR, Download App, Dark/Light).
+     Categories -> departments ONLY. Reuses mobile-nav.js's drawer/open/close
+     and theme.js's __nassimThemeToggle. -->
+<style>
+    html.dark #mob-bar1,
+    html.dark #mob-bar2,
+    html.dark #mob-bar3 { background-color: #ffffff !important; }
+</style>
+<script>
+    (function () {
+        function ready(fn) {
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+            else fn();
+        }
+
+        function whenDrawerReady(cb, tries) {
+            tries = tries || 0;
+            if (document.getElementById('mobile-nav-drawer')) { cb(); return; }
+            if (tries > 40) return;
+            setTimeout(function () { whenDrawerReady(cb, tries + 1); }, 50);
+        }
+
+        function buildUtilitiesHTML() {
+            return '' +
+              '<div class="px-5 pt-3">' +
+              '  <button type="button" class="flex items-center justify-between w-full py-3 px-3 rounded-lg text-sm font-bold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">' +
+              '    <span class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">language</span> Language</span>' +
+              '    <span class="flex items-center">' +
+              '      <span class="text-[13px] font-bold tracking-widest text-gray-900 dark:text-white">EN</span>' +
+              '      <span class="mx-1 text-gray-400 font-light text-[13px]">|</span>' +
+              '      <span class="text-[13px] font-bold tracking-widest text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">عربي</span>' +
+              '    </span>' +
+              '  </button>' +
+              '</div>' +
+              '<div class="px-5">' +
+              '  <div class="flex items-center justify-between w-full py-3 px-3 rounded-lg text-sm font-bold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">' +
+              '    <span class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">download</span> Download App</span>' +
+              '    <span class="flex items-center">' +
+              '      <a href="#" aria-label="Download on the App Store" class="flex items-center justify-center hover:opacity-80 transition-opacity">' +
+              '        <img src="topcar/app-store.png" alt="Download on the App Store" loading="lazy" class="h-5 w-auto dark:hidden"/>' +
+              '        <img src="topcar/app-store (1).png" alt="Download on the App Store" loading="lazy" class="h-5 w-auto hidden dark:block"/>' +
+              '      </a>' +
+              '      <span class="mx-1 text-gray-400 font-light text-[13px]">|</span>' +
+              '      <a href="#" aria-label="Get it on Google Play" class="flex items-center justify-center text-gray-900 dark:text-white hover:text-secondary dark:hover:text-[#f7b994] transition-colors">' +
+              '        <span class="material-symbols-outlined text-lg">android</span>' +
+              '      </a>' +
+              '    </span>' +
+              '  </div>' +
+              '</div>' +
+              '<div class="px-5 pb-4">' +
+              '  <button type="button" id="mobile-nav-theme-toggle" role="switch" aria-checked="false" class="flex items-center justify-between w-full py-3 px-3 rounded-lg text-sm font-bold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">' +
+              '    <span class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">dark_mode</span> Appearance</span>' +
+              '    <span class="mntheme-switch-track relative inline-flex items-center h-6 w-11 rounded-full bg-gray-300 dark:bg-secondary transition-colors duration-300 flex-shrink-0">' +
+              '      <span class="mntheme-switch-thumb inline-block h-5 w-5 rounded-full bg-white shadow translate-x-0.5 dark:translate-x-[22px] transition-transform duration-300"></span>' +
+              '    </span>' +
+              '  </button>' +
+              '</div>';
+        }
+
+        function setDrawerMode(mode) {
+            var drawer = document.getElementById('mobile-nav-drawer');
+            if (!drawer) return;
+            drawer.setAttribute('data-drawer-mode', mode);
+            var dept = document.getElementById('mobile-nav-departments');
+            var util = document.getElementById('mobile-nav-utilities');
+            if (mode === 'utilities') {
+                if (dept) dept.style.display = 'none';
+                if (util) util.style.display = '';
+            } else {
+                if (dept) dept.style.display = '';
+                if (util) util.style.display = 'none';
+            }
+        }
+
+        var pendingDrawerMode = 'utilities';
+
+        function syncThemeIcon() {
+            var btn = document.getElementById('mobile-nav-theme-toggle');
+            if (!btn) return;
+            var isDark = document.documentElement.classList.contains('dark');
+            var icon = btn.querySelector('.material-symbols-outlined');
+            if (icon) icon.textContent = isDark ? 'light_mode' : 'dark_mode';
+            btn.setAttribute('aria-checked', isDark ? 'true' : 'false');
+        }
+
+        function init() {
+            whenDrawerReady(function () {
+                var drawer = document.getElementById('mobile-nav-drawer');
+                if (!drawer || drawer.getAttribute('data-split-bound') === '1') return;
+                drawer.setAttribute('data-split-bound', '1');
+
+                if (!document.getElementById('mobile-nav-utilities')) {
+                    var util = document.createElement('div');
+                    util.id = 'mobile-nav-utilities';
+                    util.innerHTML = buildUtilitiesHTML();
+                    drawer.appendChild(util);
+                }
+
+                var themeBtn = document.getElementById('mobile-nav-theme-toggle');
+                if (themeBtn && themeBtn.getAttribute('data-theme-wired') !== '1') {
+                    themeBtn.setAttribute('data-theme-wired', '1');
+                    themeBtn.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (typeof window.__nassimThemeToggle === 'function') window.__nassimThemeToggle();
+                        syncThemeIcon();
+                    });
+                }
+                syncThemeIcon();
+                window.addEventListener('storage', function (e) {
+                    if (e.key === 'color-theme') syncThemeIcon();
+                });
+
+                var slot = document.getElementById('hamburger-slot');
+                if (slot) {
+                    slot.addEventListener('click', function () {
+                        setDrawerMode(pendingDrawerMode);
+                        pendingDrawerMode = 'utilities';
+                    }, true);
+                }
+
+                var catBtn = document.querySelector('[data-mbnav="categories"]');
+                if (catBtn && catBtn.getAttribute('data-split-wired') !== '1') {
+                    catBtn.setAttribute('data-split-wired', '1');
+                    catBtn.addEventListener('click', function () {
+                        pendingDrawerMode = 'categories';
+                    }, true);
+                }
+            });
+        }
+
+        ready(init);
+    })();
+</script>
+
+
+<style>
+/* MOBILE BOTTOM-NAV: FIXED PIN — NO JS REPOSITIONING.
+   The nav is position:fixed (Tailwind) with bottom-0, so it is already pinned
+   to the VISIBLE bottom edge on iOS Safari/Chrome and Android. We do NOT drive
+   `bottom` from visualViewport anymore: the old tracker listened to
+   visualViewport 'scroll'/'resize' (and window 'resize'), which fire
+   continuously during scrolling, pull-to-refresh and toolbar hide/show, and
+   rewrote the inline bottom frame-by-frame — that is what caused the bounce.
+   The bottom is now owned by CSS only and never written from JS, so there is no
+   per-frame repositioning, no jumping, no flicker. Safe-area inset is still
+   handled by #mobile-bottom-nav-inner { padding-bottom: env(safe-area-inset-bottom) }. */
+#mobile-bottom-nav { bottom: 0 !important; }
+</style>
+<script>
+/* One-time cleanup only. Remove any inline `bottom` left behind by the old
+   tracker so the CSS bottom:0 (above) owns the position permanently. We never
+   write `bottom` again and we bind NO scroll/resize/visualViewport listeners,
+   so the bar cannot bounce, jump or flicker while scrolling or pull-to-refresh. */
+(function () {
+  function ready(fn){ if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn); else fn(); }
+  ready(function () {
+    var nav = document.getElementById('mobile-bottom-nav');
+    if (!nav) return;
+    nav.style.removeProperty('bottom');
+  });
+})();
+</script>
+<script>(function(){var timer=null,active=null,inside=false;function show(m){m.style.opacity="1";m.style.visibility="visible";m.style.transform="translateY(0)"}function hide(m){m.style.opacity="0";m.style.visibility="hidden";m.style.transform="translateY(10px)";if(active===m)active=null}function scheduleClose(){inside=false;timer=setTimeout(function(){if(!inside&&active)hide(active)},250)}document.querySelectorAll(".dropdown-trigger").forEach(function(tr){var menu=tr.querySelector(".dropdown-menu");if(!menu)return;tr.addEventListener("mouseenter",function(){if(active&&active!==menu)hide(active);clearTimeout(timer);inside=true;show(menu);active=menu});menu.addEventListener("mouseenter",function(){clearTimeout(timer);inside=true});tr.addEventListener("mouseleave",scheduleClose);menu.addEventListener("mouseleave",scheduleClose)})})();</script><div id="home5-min5-notice" role="note">We only accept orders above 5 KD.</div>
+<script>
+/* MOBILE ONLY: dock the 5 KD notice into the fixed bottom-nav container.
+   Brave/Chrome on Android collapse their toolbar while scrolling, which
+   resizes the viewport; a STANDALONE fixed notice could transiently slide
+   beneath the nav bar. As a child of the nav's own fixed box (absolutely
+   positioned at top:100%), the notice moves as one piece with the bar and
+   can never separate from it. Desktop (>767px) is untouched: the notice
+   is moved back to <body> there, and the nav is hidden anyway. */
+(function () {
+    function dock() {
+        var nav = document.getElementById("mobile-bottom-nav");
+        var n = document.getElementById("home5-min5-notice");
+        if (!nav || !n) return;
+        var mobile = window.matchMedia("(max-width: 767px), (orientation: portrait)").matches;
+        if (mobile && n.parentElement !== nav) nav.appendChild(n);
+        else if (!mobile && n.parentElement !== document.body) document.body.appendChild(n);
+    }
+    dock();
+    window.addEventListener("resize", dock);
+    window.addEventListener("orientationchange", dock);
+})();
+</script>
+<style>
+/* MOBILE: parity with checkout2.html — NO notice strip under the bottom nav.
+   The 5 KD notice is removed entirely; the nav sits flush at the viewport
+   bottom with safe-area handled by #mobile-bottom-nav-inner, and the body
+   clearance matches checkout2 (62.5px nav + safe-area, no extra gap). */
+#home5-min5-notice { display: none !important; }
+@media (max-width: 767px), (orientation: portrait) {
+  #mobile-bottom-nav { bottom: 0 !important; }
+  body { padding-bottom: calc(62.5px + env(safe-area-inset-bottom, 0px)) !important; }
+}
+/* DESKTOP (>=768px): the notice strip never belonged to this page's mobile
+   bottom-nav design; without this the unstyled div renders as a plain text
+   line at the bottom of the page on desktop. */
+@media (min-width: 768px) and (orientation: landscape) { #home5-min5-notice { display: none !important; } }
+</style>
+<script>
+/* DIRECT-SWITCH MOBILE LANGUAGE — page-local, mobile only (<=767px).
+   The shared dark-overrides.js opens a language dropdown on tap; this
+   window-capture listener runs BEFORE that document-level handler, stops
+   it, and switches the language DIRECTLY via the existing
+   window.NassimLang.toggle() (localStorage 'nassim-lang' + reload).
+   The button label shows the OTHER language (shared sync marks it
+   .nassim-lang-off; CSS above displays only that span). Desktop is
+   untouched (the listener no-ops >=768px). */
+(function () {
+  "use strict";
+  window.addEventListener("click", function (e) {
+    if (!e.target || !e.target.closest) return;
+    var btn = e.target.closest("#home5-lang-btn");
+    if (!btn) return;
+    if (!window.matchMedia("(max-width: 767px), (orientation: portrait)").matches) return;
+    e.preventDefault();
+    e.stopPropagation();
+    /* toggle() is passported by the sheet wrapper below, so the one-shot
+       guard allows this language reload (desktop chooseLang() already
+       passports its own reloads). */
+    if (window.NassimLang && window.NassimLang.toggle) window.NassimLang.toggle();
+  }, true);
+})();
+</script>
+<style>
+    /* ==== SEARCH POPUP — ONE design on every viewport (home5.html) ====
+       search.js builds a SINGLE popup (#nassim-search-overlay) for the
+       header Search icon on both mobile and desktop; the desktop glass
+       design lives in home5-mobile.css scoped to >=768px, so on mobile the
+       same popup fell back to the plain legacy panel. This block applies
+       the SAME rules (identical selectors + declarations, same keyframes)
+       at <=767px so mobile portrait/landscape open the identical desktop
+       popup — no second popup, no separate mobile design. home5-mobile.css
+       is untouched; desktop keeps its own block (the two never apply at
+       the same width). Only deliberate difference: padding-top 120px so
+       the popup clears the shorter mobile header + FREE DELIVERY bar. ==== */
+    @media (max-width: 767px), (orientation: portrait) {
+      #nassim-search-overlay {
+        background: rgba(247, 249, 255, 0.15) !important;
+        padding-top: 120px !important;
+        animation: h5searchFade 180ms ease !important;
+      }
+      @keyframes h5searchFade { from { opacity: 0; } to { opacity: 1; } }
+
+      #nassim-search-overlay > div {
+        background: rgba(248, 245, 240, 0.62) !important;
+        backdrop-filter: blur(22px) saturate(1.4) !important;
+        -webkit-backdrop-filter: blur(22px) saturate(1.4) !important;
+        border: 1px solid rgba(255, 255, 255, 0.55) !important;
+        outline: 1px solid rgba(0, 3, 8, 0.05) !important;
+        border-radius: 22px !important;
+        box-shadow: 0 12px 36px rgba(0, 3, 8, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.45) !important;
+        max-width: 600px !important;
+        animation: h5searchDrop 180ms ease !important;
+      }
+      @keyframes h5searchDrop { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+      #nassim-search-overlay > div > div:first-child {
+        position: relative !important;
+        border-bottom: none !important;
+        padding: 12px 14px !important;
+        gap: 10px !important;
+      }
+      #nassim-search-overlay > div > div:first-child::before {
+        content: 'search';
+        font-family: 'Material Symbols Outlined';
+        font-size: 20px;
+        line-height: 1;
+        color: #44474b;
+        position: absolute;
+        left: 28px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+      }
+      #nassim-search-overlay input {
+        border: 1px solid rgba(0, 3, 8, 0.08) !important;
+        outline: none !important;
+        border-radius: 9999px !important;
+        background: rgba(255, 255, 255, 0.65) !important;
+        height: 40px !important;
+        padding-left: 42px !important;
+        padding-right: 16px !important;
+        font-size: 14px !important;
+        color: #111d27 !important;
+        box-shadow: inset 0 1px 2px rgba(0, 3, 8, 0.03) !important;
+      }
+      #nassim-search-overlay input::placeholder { color: rgba(17, 29, 39, 0.45) !important; }
+      #nassim-search-overlay input:focus {
+        outline: none !important;
+        border-color: rgba(130, 83, 53, 0.35) !important;
+        box-shadow: 0 0 0 3px rgba(130, 83, 53, 0.12) !important;
+      }
+      #nassim-search-overlay > div > div:first-child > button {
+        border-radius: 9999px !important;
+        width: 30px !important;
+        height: 30px !important;
+        flex: 0 0 auto !important;
+        background: rgba(255, 255, 255, 0.65) !important;
+        color: #44474b !important;
+        font-size: 13px !important;
+        border: 1px solid rgba(0, 3, 8, 0.06) !important;
+      }
+      #nassim-search-overlay > div > div:first-child > button:hover {
+        background: #e4efff !important;
+        color: #111d27 !important;
+      }
+
+      /* ARABIC (html.lang-ar): same mirrored popup row as desktop — glyph
+         physically RIGHT, close button physically LEFT, input text space
+         on the right. The row dir=rtl comes from search.js; translation
+         key "search products..." stays central. */
+      html.lang-ar #nassim-search-overlay > div > div:first-child::before {
+        left: auto !important;
+        right: 28px;
+      }
+      html.lang-ar #nassim-search-overlay input {
+        padding-left: 16px !important;
+        padding-right: 42px !important;
+      }
+
+      #nassim-search-overlay > div > div:last-child { border-top: none !important; }
+    }
+</style>
+<style>
+/* ==== ARABIC (html.lang-ar) — iPhone/WebKit letter-spacing fix ============
+   Root cause (confirmed on supermarket.html): iOS/WebKit applies letter-spacing AFTER Arabic cursive shaping, which breaks joined glyph runs, and tight line boxes then clip the tall Arabic glyphs vertically. Every rule below targets ONLY a specific positive-letter-spacing element of THIS page and ONLY while Arabic is active (html.lang-ar). English typography is never affected (the selectors require lang-ar); RTL direction, sizes, weights, colors, spacing and layout are untouched — only letter-spacing changes (plus line-height 1.6 for the 9px bottom-nav labels, whose box is provably tight). ==== */
+html.lang-ar .tracking-widest,
+html.lang-ar .tracking-wider,
+html.lang-ar .tracking-wide { letter-spacing: normal; }
+html.lang-ar #cart-main-content .sticky a[href="checkout.html"],
+html.lang-ar main > section.mt-32 > .flex.justify-between > div > span,
+html.lang-ar main > section.mt-32 .yml-atc,
+html.lang-ar .h5-lang-opt,
+html.lang-ar .h5-b-label,
+html.lang-ar .h5-b-langval,
+html.lang-ar #os-wrap .os-label,
+html.lang-ar #os-wrap .os-meta-row b,
+html.lang-ar #os-wrap .os-btn,
+html.lang-ar #os-wrap .os-trow .os-tlabel { letter-spacing: normal !important; }
+html.lang-ar #mobile-bottom-nav .font-headline { letter-spacing: normal; line-height: 1.6; }
+/* AR-only size for the "Back to Home Page" button: the i18n runtime renders
+   العودة إلى الصفحة الرئيسية inside the same .os-btn anchor; Arabic here is
+   set to exactly 150% of the English 11px (16.5px). English is unaffected
+   (the selector requires html.lang-ar). */
+html.lang-ar #os-wrap .os-btn { font-size: 16.5px; }
+</style>
+<script src="assets/js/mbnav-categories.js?v=2"></script>
+<script src="/api/catalog" defer id="nassim-catalog-script" onload="document.dispatchEvent(new Event('nassim:catalog-loaded'))" onerror="document.dispatchEvent(new Event('nassim:catalog-loaded'))"></script>
+<script>
+/* 2026-10-25: CODE/MODEL = the product's real SKU. Item rows render the
+   name-derived code as a fallback; once the catalog arrives, each row's
+   data-slug resolves the product and the SKU replaces the fallback. Re-applied
+   for a short window so language re-renders keep the real SKU. */
+(function () {
+  function updateCodes() {
+    var map = {};
+    (window.NASSIM_PRODUCTS || []).forEach(function (p) { if (p && p.id) map[p.id] = p; if (p && p.slug) map[p.slug] = p; });
+    if (!Object.keys(map).length) return;
+    document.querySelectorAll(".os-pcode[data-slug]").forEach(function (el) {
+      function slugCode(slug) { var codes = String(slug || "").match(/([a-z]{1,6})-(\d+)/gi) || []; return codes.length ? codes[codes.length - 1].toUpperCase() : ""; }
+      var p = map[el.getAttribute("data-slug")];
+      /* Skip when the correct code is already shown (EN label or the AR
+         translated one) — rewriting would flash English over Arabic. */
+      if (p && p.sku) { if (el.textContent.indexOf(p.sku) === -1) el.textContent = "Code/MODEL : " + p.sku; }
+      else { var sc = slugCode(el.getAttribute("data-slug")); if (sc && el.textContent.indexOf(sc) === -1) el.textContent = "Code/MODEL : " + sc; }
+    });
+  }
+  document.addEventListener("nassim:catalog-loaded", updateCodes);
+  if (window.NASSIM_PRODUCTS) updateCodes();
+  var tries = 0;
+  var iv = setInterval(function () { updateCodes(); if (++tries >= 15) clearInterval(iv); }, 1000);
+})();
+</script>
+
+
+</body>
+
+</html>

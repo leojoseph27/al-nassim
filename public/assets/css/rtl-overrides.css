@@ -489,3 +489,44 @@ html.lang-ar #mobile-bottom-nav,
 html.lang-ar #mobile-bottom-nav #mobile-bottom-nav-inner {
   direction: ltr;
 }
+
+/* ---------- Arabic display font: Noto Sans Arabic ----------
+   Manrope/Inter have no Arabic glyphs, so every Arabic string on the site
+   currently falls back to each device's system font. On iPhone Safari that
+   fallback (Geeza Pro via synthetic 800–900 weights + letter-spacing
+   applied after shaping) renders joined Arabic letters with visible gaps.
+   Serve the locally bundled Noto Sans Arabic (arabic-subset variable woff2,
+   already in /assets/fonts — no new files) to ARABIC text only:
+     * unicode-range loads it just for Arabic code points, so English and
+       numbers keep Manrope/Inter everywhere;
+     * the [dir="rtl"] scoping means only RTL-marked elements match, i.e.
+       elements the i18n runtime has actually filled with Arabic — English
+       layout and typography are untouched;
+     * letter-spacing: normal removes the tracking that WebKit inserts
+       between shaped Arabic glyphs (tracking-[0.2em]/[0.15em] etc.);
+     * font-weight 700 matches the headline/label weight used by these
+       elements in the design. ==== */
+@font-face {
+  font-family: 'Noto Sans Arabic';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(/assets/fonts/NotoSansArabic-var-arabic.woff2) format('woff2');
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC;
+}
+html.lang-ar [dir="rtl"] {
+  font-family: "Noto Sans Arabic", "IBM Plex Sans Arabic", "Geeza Pro", "SF Arabic", Inter, Manrope, sans-serif;
+  letter-spacing: normal;
+}
+/* Positive tracking on Arabic display text is removed (it breaks shaping on
+   iOS); negative tracking (tight headlines) is kept as designed. */
+html.lang-ar [dir="rtl"][class*="tracking-"] { letter-spacing: normal; }
+html.lang-ar .font-label[dir="rtl"], html.lang-ar .font-label .nassim-rtl { letter-spacing: normal; }
+/* The runtime marks injected Arabic with the .nassim-rtl CLASS (no dir
+   attribute), so those elements must match too. !important is required to
+   beat inline/utility font-family on some pages. */
+html.lang-ar .nassim-rtl, html.lang-ar .nassim-rtl.nassim-rtl-ta,
+html.lang-ar .nassim-rtl[class*="tracking-"] {
+  font-family: "Noto Sans Arabic", "IBM Plex Sans Arabic", "Geeza Pro", "SF Arabic", Inter, Manrope, sans-serif;
+  letter-spacing: normal;
+}

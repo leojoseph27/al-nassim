@@ -46,7 +46,7 @@
 <link rel="preload" href="/assets/fonts/Manrope-800-xn7gYHE41ni1AdIRggexSg.woff2" as="font" type="font/woff2" crossorigin/>
 <link rel="stylesheet" href="/assets/css/fonts-local.css?v=20261013"/>
 <script></script>
-<link rel="stylesheet" href="assets/css/rtl-overrides.css?v=6"/>
+<link rel="stylesheet" href="assets/css/rtl-overrides.css?v=7"/>
 <script src="assets/js/i18n-data.js?v=5" defer></script>
 <script src="assets/js/product-name.js?v=1"></script>
 <script src="assets/js/i18n.js?v=2" defer></script>
@@ -132,6 +132,15 @@
 .nassim-store-notice p { font-size: 12.5px; line-height: 1.55; }
 @media (min-width: 768px) {
   .nassim-store-notice p { font-size: 13px; line-height: 1.55; }
+}
+/* Arabic-only: the payment notice sentence renders bold so it stands out
+   (English keeps its existing weight). Weight 800 + a hairline stroke,
+   because the Arabic webfont has no true bold face (600 and 700 render
+   identically). */
+html.lang-ar .nassim-payment-notice .payment-notice-text,
+html.lang-ar .nassim-payment-notice .payment-notice-text .nassim-rtl {
+  font-weight: 700 !important; /* same weight as the Note label (font-bold) */
+  font-size: 1.1em !important; /* +10% vs the 13.65px English sentence, keeping the agreed Arabic size */
 }
 /* Arabic-only: the Back To Cart / Submit Your Order buttons render 15%
    larger text in Arabic for legibility (12px base → 13.8px). English
@@ -381,7 +390,7 @@ html #place-order-btn:hover {
 <link rel="stylesheet" href="/assets/css/tailwind.css?v=20261013c">
 <link rel="stylesheet" href="assets/css/nav-popover-mobile.css?v=10"/>
 <script src="assets/js/nav-popover-mobile.js?v=5" defer></script>
-<link rel="stylesheet" href="assets/css/dark-overrides.css?v=nw1102">
+<link rel="stylesheet" href="assets/css/dark-overrides.css?v=nw1108">
 <style>
 /* MOBILE (<=767px) language toggle = home5.html: show ONLY the other
    language (shared sync marks it .nassim-lang-off), solid black on the
@@ -1909,14 +1918,14 @@ html.dark #home5-burger-btn { color: #ffffff; }
      no card, border, shadow or padding (the generic #checkout-form > div
      card rule is overridden below). i18n addendum supplies the Arabic. -->
 <div class="nassim-store-notice">
-<p class="text-center max-w-2xl mx-auto leading-relaxed text-on-surface dark:text-white"><strong class="font-bold">Note:</strong> <span>After submitting your order, our store team will contact you to confirm product availability, make any necessary changes to your order, and schedule delivery.</span></p>
+<p class="text-center max-w-2xl mx-auto leading-relaxed text-on-surface dark:text-white"><strong class="font-bold">Note:</strong> <span>After submitting your order, our showroom team will contact you to confirm product availability, make any necessary changes to your order, and schedule delivery.</span></p>
 <p class="text-center max-w-2xl mx-auto leading-relaxed text-on-surface dark:text-white" style="margin-top:8px"><span>Then the invoice will be prepared at the showroom and handed to you along with your purchases.</span></p>
 </div>
 
 <!-- Payment notice: centred semibold sentence, directly on the page
      background. Arabic translation to be provided separately. -->
 <div class="nassim-payment-notice">
-<p class="text-center max-w-2xl mx-auto font-semibold leading-relaxed text-on-surface dark:text-white" style="font-size:13px"><span>Payment is to be made upon receiving your purchases.</span></p>
+<p class="text-center max-w-2xl mx-auto font-semibold leading-relaxed text-on-surface dark:text-white" style="font-size:13.65px"><span class="payment-notice-text">Payment is to be made upon receiving your purchases.</span></p>
 </div>
 
 <!-- Terms &amp; Conditions / Privacy Policy notice now lives INSIDE the
@@ -2103,14 +2112,14 @@ body.os-overlay-lock { overflow: hidden !important; }
     scrollbar-width: none;
   }
   #order-summary-panel.os-h-fixed .os-items::-webkit-scrollbar { display: none; }
-},
+}
 /* "View Products" heading above the product list */
 .os-items-heading {
   font-family: 'Manrope', 'Inter', sans-serif;
   font-size: 1rem;
-  font-weight: 800;
+  font-weight: 700 !important; /* lighter Manrope face; 800 was too heavy */
   margin: 0 0 2px;
-  color: #0b0d0f;
+  color: #000000 !important;
 }
 html.dark .os-items-heading { color: var(--color-on-surface, #e8f1ff); }
 .os-items-toggle .os-items-heading { margin: 0; }
@@ -2135,8 +2144,9 @@ html.dark .os-items-heading { color: var(--color-on-surface, #e8f1ff); }
   border-radius: 8px;
   transition: background-color 0.15s ease;
 }
-.os-items-toggle:hover { background: rgba(13, 27, 42, 0.045); }
-.os-items-toggle:active { background: rgba(13, 27, 42, 0.08); }
+/* Hover/active backgrounds removed: the heading row no longer highlights. */
+.os-items-toggle:hover { background: transparent; }
+.os-items-toggle:active { background: transparent; }
 /* Dark mode: the toggle becomes a clearly identifiable dropdown button —
    a surface one step lighter than the dark card, subtle border, bright
    text and chevron. Light mode is untouched. */
@@ -2146,8 +2156,8 @@ html.dark .os-items-toggle {
   border-radius: 10px;
   padding: 10px 12px;
 }
-html.dark .os-items-toggle:hover { background: #2b333f; }
-html.dark .os-items-toggle:active { background: #1e252e; }
+html.dark .os-items-toggle:hover { background: var(--color-surface-container-highest, #232a34); }
+html.dark .os-items-toggle:active { background: var(--color-surface-container-highest, #232a34); }
 html.dark .os-items-toggle .os-items-heading { color: var(--color-on-surface, #e8f1ff); }
 .os-items-toggle:focus-visible { outline: 2px solid #825335; outline-offset: 2px; }
 .os-chevron {
@@ -2262,6 +2272,9 @@ html.dark .os-trow.os-tsep.os-tsep-total { border-top-color: #000000; }
   text-transform: uppercase; color: #5b6570;
 }
 html.dark .os-tlabel { color: #bcc8d7; }
+/* TOTAL label only: black + bold */
+.os-trow.os-tsep-total .os-tlabel { color: #000000; font-weight: 800; }
+html.dark .os-trow.os-tsep-total .os-tlabel { color: #ffffff; }
 .os-tlabel .os-t-ic { font-size: 18px; }
 .os-tval { font-weight: 800; font-size: 0.9375rem; color: #0b0d0f; white-space: nowrap; }
 html.dark .os-tval { color: var(--color-on-surface, #e8f1ff); }
@@ -2297,12 +2310,13 @@ html.dark .os-min-order { color: #9fb0c3; }
 .os-head-row .os-edit-btn .material-symbols-outlined { font-size: 18px; }
 .os-head-row .os-edit-btn .os-back-arrow { font-size: 17px; }
 html.lang-ar .os-head-row { direction: rtl; }
-/* Edit-cart button INSIDE the white container, ABOVE the Products heading,
-   centralised. Side margins zeroed (card padding provides the inset). */
+/* Edit-cart link INSIDE the white container, ABOVE the Products heading,
+   centred. Side margins zeroed (card padding provides the inset). */
 .os-foot-row { display: flex; justify-content: center; margin: 0 0 12px; }
-/* Arabic: mirror the edit-button row — button right-aligned and the arrow
-   rendered to the RIGHT of the Arabic text (the existing scaleX(-1) rule
-   flips the arrow glyph to point in the RTL reading direction). */
+/* Arabic: mirror the edit-link row — link right-aligned (flex-start under
+   rtl) and the arrow rendered to the RIGHT of the Arabic text (the existing
+   scaleX(-1) rule flips the arrow glyph to point in the RTL reading
+   direction). */
 html.lang-ar .os-foot-row { direction: rtl; }
 .os-foot-row .os-edit-btn { flex: 0 0 auto; }
 .os-title {  font-family: 'Manrope', 'Inter', sans-serif;
@@ -2330,48 +2344,59 @@ html.dark .os-card {
   gap: 16px;
   padding-bottom: 16px;
 }
-/* Edit-cart button: white card-style control — thin light-grey border,
-   16px radius, subtle depth shadow; cart icon + label + trailing arrow. */
+/* Edit-cart control: simple red underlined text link (Tavola "Go Back to
+   Shopping Cart" style) — no pill, no background, border, radius, shadow
+   or button padding. Small left arrow + label with a small gap. */
 .os-edit-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex: 0 0 auto;
   min-width: 0;
-  background: #ffffff;
-  border: 1.21px solid #000000; /* 10% thicker again (1.1px -> 1.21px) */
-  border-radius: 9999px;
-  padding: 10px 16px;
+  position: static;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
   box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   cursor: pointer;
   text-align: start;
   color: #000000;
   font-family: 'Manrope', 'Inter', sans-serif;
-  font-size: 0.72rem;
+  font-size: 0.86rem; /* +10% from 0.78rem */
   font-weight: 700;
   line-height: 1.3;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.12s ease;
+  transition: color 0.2s ease, transform 0.18s ease;
 }
+.os-edit-btn::before { content: none; }
 .os-edit-btn:hover {
-  background: #f3f4f6;
-  border-color: #000000;
   color: #000000;
-  box-shadow: none;
+  background: none;
+  transform: scale(1.08);
 }
-.os-edit-btn:active { transform: scale(0.975); }
+/* Arrow keeps its size on hover — it only scales with the control zoom. */
+.os-edit-btn:active { color: #222222; }
+/* Label carries the underline; the arrow stays unadorned. */
+.os-edit-btn > span:not(.material-symbols-outlined) {
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: currentColor;
+  text-underline-offset: 5px;
+}
 html.dark .os-edit-btn {
-  background: #ffffff;
-  border-color: #000000;
-  color: #000000;
-  box-shadow: none;
+  background: none;
+  color: #ffffff;
 }
-.os-edit-btn .material-symbols-outlined { font-size: 21px; color: #000000; flex-shrink: 0; }
-html.dark .os-edit-btn .material-symbols-outlined { color: #000000; }
-/* Leading back arrow (points back to the cart page) + trailing cart icon
-   pushed to the inline end. RTL: the back arrow flips to point in the
-   reader's backward direction (right in Arabic). */
-.os-edit-btn .os-back-arrow { font-size: 18px; color: #000000; flex-shrink: 0; }
-html.dark .os-edit-btn .os-back-arrow { color: #000000; }
+html.dark .os-edit-btn:hover { color: #cccccc; }
+.os-edit-btn .material-symbols-outlined { font-size: 17.75px; color: currentColor; flex-shrink: 0; } /* -5% (25px -> 23.75px) */
+/* Leading back arrow (points back to the cart page). RTL: the back arrow
+   flips to point in the reader's backward direction (right in Arabic). */
+.os-edit-btn .os-back-arrow {
+  flex-shrink: 0;
+  font-variation-settings: 'FILL' 1, 'wght' 700, 'GRAD' 0, 'opsz' 24; /* solid bold arrow, like the reference */
+}
 html.lang-ar .os-edit-btn .os-back-arrow { transform: scaleX(-1); }
 /* ---- Arabic panel: neutralise i18n group-marking classes ----------------
      i18n.js's content-group climb stamps parts of the panel (delivery row,
@@ -2393,8 +2418,8 @@ html.lang-ar #order-summary-panel .os-card > * { width: 100%; box-sizing: border
    wide desktops: a slightly tighter button keeps the one-line text + total
    on the same row without overflow. */
 @media (min-width: 768px) and (max-width: 1023px) {
-  .os-edit-btn { font-size: 0.66rem; gap: 6px; padding: 10px 10px; }
-  .os-edit-btn .material-symbols-outlined { font-size: 18px; }
+  .os-edit-btn { font-size: 0.79rem; gap: 5px; padding: 0; }
+  .os-edit-btn .material-symbols-outlined { font-size: 17px; }
 }
 .os-vdiv {
   width: 1px;
@@ -2487,6 +2512,9 @@ html.dark .os-item-name { color: var(--color-on-surface, #e8f1ff); }
 html.dark .os-item-meta { color: var(--color-on-surface-variant, #bcc8d7); }
 .os-item-meta b { color: #3f454c; font-weight: 700; }
 html.dark .os-item-meta b { color: var(--color-on-surface, #e8f1ff); }
+/* Quantity value only: black + bold */
+.os-item-meta b.os-qty { color: #000000; font-weight: 800; }
+html.dark .os-item-meta b.os-qty { color: #ffffff; }
 .os-item-total {
   flex: 0 0 auto;
   align-self: flex-start;
@@ -2551,12 +2579,11 @@ html.lang-ar .os-edit-btn { text-align: right; }
 @media (max-width: 767px) {
   .os-panel { padding: 18px 14px; border-radius: 16px; }
   .os-card { padding: 14px; }
-  /* Narrow screens: tighter edit button so it and the total share one row
-     without overflow */
+  /* Narrow screens: slightly smaller link text so it and the total share
+     one row without overflow */
   .os-top { gap: 10px; }
-  .os-edit-btn { padding: 8px 10px; gap: 6px; font-size: 0.66rem; border-radius: 11px; }
-  .os-edit-btn .material-symbols-outlined { font-size: 18px; }
-  .os-edit-btn .os-back-arrow { font-size: 15px; }
+  .os-edit-btn { gap: 5px; font-size: 0.77rem; padding: 0; }
+  .os-edit-btn .material-symbols-outlined { font-size: 17px; }
 }
 </style>
 <script>
@@ -2647,8 +2674,8 @@ html.lang-ar .os-edit-btn { text-align: right; }
        right (mirrored automatically in Arabic RTL). */
     var editBtnHtml =
       '<button type="button" id="os-edit-cart-btn" class="os-edit-btn">' +
-        '<span class="material-symbols-outlined os-back-arrow" aria-hidden="true">arrow_back</span>' +
-        '<span' + arDir + '>' + t("Edit shopping cart products", "تعديل منتجات سلة التسوق") + '</span>' +
+        '<span class="material-symbols-outlined os-back-arrow" aria-hidden="true">west</span>' +
+        '<span' + arDir + '>' + t("Edit Shopping Cart Products", "تعديل منتجات سلة التسوق") + '</span>' +
       '</button>';
     var html = '<div class="os-card">' +
       /* Order Summary heading INSIDE the white container, at the top. */
@@ -2661,7 +2688,7 @@ html.lang-ar .os-edit-btn { text-align: right; }
          white container as the product list (single card design). */
       '<div class="os-totals">' +
         '<div class="os-trow">' +
-          '<span class="os-tlabel">' + t("SUBTOTAL", "الإجمالي الفرعي") + '</span>' +
+          '<span class="os-tlabel">' + t("SUBTOTAL", "المجموع الفرعي") + '</span>' +
           '<span class="os-tval" id="os-sum-subtotal"><span class="os-cur-group">' + currencyGroupSpans("KD", fmt3(subtotal)) + '</span></span>' +
         '</div>' +
         '<div class="os-trow os-tsep">' +
@@ -2708,7 +2735,7 @@ html.lang-ar .os-edit-btn { text-align: right; }
         '<div class="os-item-info">' +
           '<p class="os-item-name"' + nameDirAttr + '>' + esc(dispName) + '</p>' +
           '<p class="os-item-meta">' + t("Unit price", "سعر القطعة") + ': <b class="os-cur-group">' + currencyGroupSpans(cur, fmt3(i.price)) + '</b></p>' +
-          '<p class="os-item-meta">' + t("Quantity", "الكمية") + ': ' + qty + '</p>' +
+          '<p class="os-item-meta">' + t("Quantity", "الكمية") + ': <b class="os-qty">' + qty + '</b></p>' +
         '</div>' +
         '<span class="os-item-total"><span class="os-cur-group">' + currencyGroupSpans(cur, fmt3(i.price * qty)) + '</span></span>' +
       '</div>';
@@ -3166,7 +3193,7 @@ html.lang-ar .os-edit-btn { text-align: right; }
 <script src="assets/js/vendor/libphonenumber-mobile.js"></script>
 <script src="assets/js/vendor/phone-examples.js"></script>
 <script src="assets/js/checkout.js"></script>
-<script src="assets/js/cart-nav.js" defer></script>
+<script src="assets/js/cart-nav.js?v=3" defer></script>
 <script src="assets/js/search.js" defer></script>
 <script src="assets/js/account.js" defer></script>
 <script>
@@ -3191,41 +3218,13 @@ html.lang-ar .os-edit-btn { text-align: right; }
             else fn();
         }
 
-        /* 1. Merge AR mappings into the existing NASSIM_I18N dictionary.
-              i18n-data.js and i18n.js are both deferred and i18n.js can init
-              before DOMContentLoaded, so the merge is done via a property
-              setter: the moment i18n-data.js assigns the dictionary, these
-              entries are already inside it. Same dictionary, no separate
-              translation system. Keys are normalized lowercase there. */
-        var I18N_ADDENDUM = {
-          "country *": "الدولة *", "building *": "المبنى *", "floor *": "الطابق *", "e.g. 3, 3a, g1, mezzanine": "مثال: 3، 3A، G1، Mezzanine",
-          "note:": "ملحوظة:",
-          "payment is to be made upon receiving your purchases.": "يتم الدفع عند استلام مشترياتك.",
-          "after submitting your order, our store team will contact you to confirm product availability, make any necessary changes to your order, and schedule delivery.": "بعد تقديم طلبك، سيتواصل معك فريق المتجر لتأكيد توفر المنتجات، وإجراء أي تعديلات ضرورية على طلبك، وتحديد موعد التسليم.",
-          "then the invoice will be prepared at the showroom and handed to you along with your purchases.": "بعد ذلك، سيتم إعداد الفاتورة في صالة العرض وتسليمها لك مع مشترياتك."
-        };
-        /* Addendum is AUTHORITATIVE: these page-specific wordings (including
-           the exact "ملحوظة:" notice label) must win over any same-key
-           entries shipped in i18n-data.js (e.g. its "note:" mapping). */
-        function mergeI18n(m) {
-            if (!m) return m;
-            for (var k in I18N_ADDENDUM) m[k] = I18N_ADDENDUM[k];
-            return m;
-        }
-        (function () {
-            var real;
-            try {
-                real = window.NASSIM_I18N;
-                Object.defineProperty(window, "NASSIM_I18N", {
-                    configurable: true,
-                    get: function () { return real; },
-                    set: function (v) { real = mergeI18n(v); }
-                });
-                mergeI18n(real);
-            } catch (e) { mergeI18n(window.NASSIM_I18N); }
-        })();
+        /* 1. Translations: this page no longer defines any local i18n
+              addendum. All of its Arabic mappings (address fields, the
+              "ملاحظة:" note label and the three store notices) now live in
+              the central i18n source (public/assets/js/i18n-data.js), which
+              is the single authoritative dictionary consumed by i18n.js.
 
-        /* 2. Building/Floor required — capture phase on document so this
+        2. Building/Floor required — capture phase on document so this
               blocks checkout.js's bubble-phase submit handler when either is
               empty; otherwise the order proceeds exactly as before. */
         ready(function () {

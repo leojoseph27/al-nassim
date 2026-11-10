@@ -2255,21 +2255,9 @@ html.dark .os-mbar-chevron { color: var(--color-on-surface, #e8f1ff); }
     background: linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.05) 100%);
     pointer-events: none;
   }
-  /* Concave "wings": curved transitions where the tab flows out of the
-     header strip (classic notch technique — an inverse-rounded corner filled
-     with the strip's own colour sits on each side of the tab). */
-  .os-mbar .os-mbar-tab::after {
-    content: "";
-    position: absolute;
-    top: -1px; left: -11px; width: 12px; height: 12px;
-    border-radius: 0 12px 0 0;
-    box-shadow: 5px -5px 0 4px rgba(250,251,253,0.97);
-    pointer-events: none;
-  }
-  .os-mbar .os-mbar-tab.wing-right-shadow,
-  html.dark .os-mbar .os-mbar-tab::after {
-    /* dark-mode wing fill (separate rule below in the dark block) */
-  }
+  /* (the earlier concave-wing experiment was removed: its white fill
+     rendered as a protruding blob on the left — the tab is now a clean,
+     fully symmetrical shape.) */
   .os-mbar .os-mbar-tab .material-symbols-outlined {
     font-size: 22px;
     transition: transform 0.25s ease;
@@ -2293,9 +2281,7 @@ html.dark .os-mbar-chevron { color: var(--color-on-surface, #e8f1ff); }
       inset 0 -1px 0 rgba(255,255,255,0.2),
       0 8px 14px rgba(0,0,0,0.4);
   }
-  html.dark .os-mbar .os-mbar-tab::after {
-    box-shadow: 5px -5px 0 4px rgba(24,29,36,0.97);
-  }
+
   /* ---- Edit-cart control (Show Summary panel): no zoom/scale on mobile.
      Tapping fired the desktop :hover transform (scale 1.08), so the button
      enlarged/pulsed instead of navigating cleanly. The click handler goes

@@ -2,25 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/auth";
-import {
-  isAutomationEnabled,
-  sendOrderMessage,
-  orderIdempotencyKey,
-  testRecipients,
-} from "@/lib/whatsapp-automation";
+import { notifyOrder, isAutomationEnabled, testRecipients } from "@/lib/whatsapp-automation";
 
 export const dynamic = "force-dynamic";
 
 const sendSchema = z.object({ orderId: z.number().int().positive() });
 
 /**
- * Automated WhatsApp order notification — the Baileys counterpart of the
- * manual wa.me workflow in internal-orders2.html. Only reachable when the
- * admin toggle is ON. All policy is enforced HERE:
- *  - toggle OFF  → 403, the manual wa.me flow remains the only path;
- *  - already sent → no second message (duplicate prevention);
- *  - recipient   → ALWAYS the fixed test number, never the customer's phone;
- *  - whatsappSent is only set to true after Baileys confirms delivery.
+ * Staff MANUAL WhatsApp send / retry — the backup path for notifications
+ * that failed automatically, plus the only path when staff choose to send
+ * themselves. It uses the SAME notifyOrder() lifecycle as the automatic
+ * post-checkout trigger, so:
+ *   - SENT orders can never be re-sent (409 duplicate);
+ *   - an in-flight automatic attempt returns 409 busy (no duplicates);
+ *   - FAILED/PENDING orders can be retried freely;
+ *   - TEST MODE + recipient allowlist + automation toggle are enforced
+ *     exactly as for automatic sends.
  */
 export async function POST(req: NextRequest) {
   const staff = await requireStaff();
@@ -36,21 +33,20 @@ export async function POST(req: NextRequest) {
   }
   const orderId = parsed.data.orderId;
 
-  // Toggle OFF: never send anything automated.
+  // Toggle OFF: never send anything automated or manual (existing behaviour).
   if (!(await isAutomationEnabled())) {
     return NextResponse.json({ success: false, data: null, error: "WhatsApp automation is disabled" }, { status: 403 });
   }
 
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    select: { id: true, orderNumber: true, customerName: true, customerPhone: true, whatsappSent: true },
+    select: { id: true, orderNumber: true, whatsappSent: true, whatsappStatus: true },
   });
   if (!order) return NextResponse.json({ success: false, data: null, error: "Order not found" }, { status: 404 });
 
+  const outcome = await notifyOrder(orderId, { actorId: staff.id, source: "manual" });
 
-  // Duplicate prevention: the order was already sent successfully (flag is
-  // only set after a confirmed Baileys delivery). Refuse without sending.
-  if (order.whatsappSent) {
+  if (outcome.result === "duplicate") {
     return NextResponse.json({
       success: false,
       data: null,
@@ -58,61 +54,34 @@ export async function POST(req: NextRequest) {
       code: "ALREADY_SENT",
     }, { status: 409 });
   }
-
-  const result = await sendOrderMessage(
-    orderId,
-    { customerName: order.customerName, customerPhone: order.customerPhone },
-    orderIdempotencyKey(orderId),
-    // Same customer link as the manual wa.me flow; the request's own origin
-    // mirrors the manual flow's window.location.origin fallback when
-    // APP_BASE_URL is unset.
-    req.nextUrl.origin
-  );
-
-  const stamp = new Date().toISOString();
-
-  if (!result.ok) {
-    // Failure / unknown: whatsappSent stays false, so staff can retry cleanly.
-    const status = result.customerPhone || order.customerPhone;
-    await prisma.auditLog.create({
-      data: {
-        actorId: staff.id,
-        action: "WHATSAPP_AUTO_SEND_FAILED",
-        entity: "Order",
-        entityId: String(order.id),
-        detail: `${order.orderNumber} | customer=${status || "invalid"} | recipient=${result.recipient || "-"} | status=FAILED | at=${stamp} | ${result.error}`,
-      },
-    }).catch(() => {});
-    return NextResponse.json({ success: false, data: null, error: result.error }, { status: result.status });
+  if (outcome.result === "busy") {
+    return NextResponse.json({
+      success: false,
+      data: null,
+      error: outcome.error || "Another notification attempt is in progress. Try again in a moment.",
+      code: "IN_PROGRESS",
+    }, { status: 409 });
+  }
+  if (outcome.result === "skipped") {
+    return NextResponse.json({ success: false, data: null, error: outcome.error }, { status: 403 });
+  }
+  if (outcome.result === "failed") {
+    return NextResponse.json({ success: false, data: null, error: outcome.error || "Send failed" }, { status: 502 });
   }
 
-  // Baileys confirmed the send — only NOW is the order marked as sent.
-  await prisma.order.update({ where: { id: order.id }, data: { whatsappSent: true } });
-  await prisma.auditLog.create({
-    data: {
-      actorId: staff.id,
-      action: "WHATSAPP_AUTO_SENT",
-      entity: "Order",
-      entityId: String(order.id),
-      detail: `${order.orderNumber} | customer=+${result.customerPhone} | recipient=+${result.recipient}${result.redirected ? " (REDIRECTED, TEST MODE)" : ""} | status=SENT | messageId=${result.messageId || "-"} | at=${stamp}`,
-    },
-  }).catch(() => {});
-
+  // SENT (manual)
   return NextResponse.json({
     success: true,
     data: {
       delivered: true,
       deliveryStatus: "SENT",
-      messageId: result.messageId ?? null,
-      testMode: result.testMode,
-      /** The customer's own normalized number. */
-      customerPhone: "+" + result.customerPhone,
-      /** The number the message actually went to. */
-      recipient: "+" + result.recipient,
-      /** true = the customer's number was replaced by a testing number. */
-      redirected: result.redirected,
-      allowedRecipients: result.testMode ? testRecipients().map((r) => "+" + r) : null,
-      sentAt: stamp,
+      sentBy: "manual",
+      messageId: outcome.messageId ?? null,
+      testMode: outcome.testMode ?? false,
+      customerPhone: outcome.customerPhone ?? null,
+      recipient: outcome.recipient ?? null,
+      redirected: outcome.redirected ?? false,
+      allowedRecipients: outcome.testMode ? testRecipients().map((r) => "+" + r) : null,
     },
     error: null,
   });

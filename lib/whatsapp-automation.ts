@@ -359,3 +359,157 @@ export async function sendOrderMessage(
 export function orderIdempotencyKey(orderId: number): string {
   return `order-notif-${orderId}`;
 }
+
+/* ------------------------------------------------------------------ */
+/* Unified notification lifecycle (automatic + manual share this)      */
+/* ------------------------------------------------------------------ */
+
+export type NotifyOutcome = {
+  result: "duplicate" | "busy" | "sent" | "failed" | "skipped";
+  error?: string;
+  messageId?: string | null;
+  customerPhone?: string;
+  recipient?: string;
+  redirected?: boolean;
+  testMode?: boolean;
+};
+
+/** Atomic claim of the send slot for one order. Uses a conditional
+ *  updateMany so only ONE of any number of concurrent auto/manual requests
+ *  wins; losers get "busy". A SENDING claim older than 2 minutes is treated
+ *  as stale (crashed/restarted process) and may be re-claimed. */
+async function claimSendSlot(orderId: number): Promise<boolean> {
+  const staleBefore = new Date(Date.now() - 120000);
+  const claim = await prisma.order.updateMany({
+    where: {
+      id: orderId,
+      whatsappSent: false,
+      OR: [
+        { whatsappStatus: { not: "SENDING" } },
+        { updatedAt: { lt: staleBefore } },
+      ],
+    },
+    data: { whatsappStatus: "SENDING" },
+  });
+  return claim.count === 1;
+}
+
+/**
+ * Send (or retry) the WhatsApp notification for one order. BOTH the
+ * automatic post-checkout trigger and the staff manual button call THIS
+ * function, so duplicate protection, TEST MODE, the automation toggle and
+ * status tracking are defined in exactly one place:
+ *   - SENT orders can never be claimed again (duplicate);
+ *   - SENDING orders are "busy" until the attempt settles (or goes stale);
+ *   - FAILED/PENDING orders can be retried by staff;
+ *   - Baileys' own idempotency key (order-notif-<id>) is a second layer.
+ * Never throws: all outcomes are recorded on the order.
+ */
+export async function notifyOrder(
+  orderId: number,
+  opts: { actorId?: number | null; source: "auto" | "manual" }
+): Promise<NotifyOutcome> {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: { id: true, orderNumber: true, customerPhone: true, whatsappSent: true, whatsappStatus: true },
+  });
+  if (!order) return { result: "failed", error: "Order not found" };
+
+  // Already delivered: never send again (auto or manual).
+  if (order.whatsappSent || order.whatsappStatus === "SENT") {
+    return { result: "duplicate" };
+  }
+  // Automation OFF: no automatic send. (Manual sends require the toggle too —
+  // the existing staff-page behaviour.)
+  if (!(await isAutomationEnabled())) {
+    return { result: "skipped", error: "WhatsApp automation is disabled" };
+  }
+
+  if (!(await claimSendSlot(orderId))) {
+    const current = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { whatsappStatus: true, whatsappSent: true },
+    });
+    if (current?.whatsappSent) return { result: "duplicate" };
+    return { result: "busy", error: "Another notification attempt is in progress" };
+  }
+
+  const full = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: { id: true, orderNumber: true, customerName: true, customerPhone: true },
+  });
+  if (!full) return { result: "failed", error: "Order not found" };
+
+  const result = await sendOrderMessage(
+    orderId,
+    { customerName: full.customerName, customerPhone: full.customerPhone },
+    orderIdempotencyKey(orderId)
+  );
+
+  const stamp = new Date();
+  if (result.ok) {
+    await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        whatsappSent: true,
+        whatsappStatus: "SENT",
+        whatsappAuto: opts.source === "auto",
+        whatsappSentAt: stamp,
+        whatsappError: null,
+      },
+    });
+    await prisma.auditLog.create({
+      data: {
+        actorId: opts.actorId ?? null,
+        action: opts.source === "auto" ? "WHATSAPP_AUTO_SENT" : "WHATSAPP_MANUAL_SENT",
+        entity: "Order",
+        entityId: String(orderId),
+        detail: `${full.orderNumber} | customer=+${result.customerPhone} | recipient=+${result.recipient}${result.redirected ? " (REDIRECTED, TEST MODE)" : ""} | status=SENT | messageId=${result.messageId || "-"} | at=${stamp.toISOString()}`,
+      },
+    }).catch(() => {});
+    return {
+      result: "sent",
+      messageId: result.messageId,
+      customerPhone: "+" + result.customerPhone,
+      recipient: "+" + result.recipient,
+      redirected: result.redirected,
+      testMode: result.testMode,
+    };
+  }
+
+  await prisma.order.update({
+    where: { id: orderId },
+    data: {
+      whatsappStatus: "FAILED",
+      whatsappError: `${result.error} (at ${stamp.toISOString()})`,
+    },
+  });
+  await prisma.auditLog.create({
+    data: {
+      actorId: opts.actorId ?? null,
+      action: "WHATSAPP_AUTO_SEND_FAILED",
+      entity: "Order",
+      entityId: String(orderId),
+      detail: `${full.orderNumber} | customer=${result.customerPhone ? "+" + result.customerPhone : order.customerPhone || "-"} | recipient=${result.recipient || "-"} | status=FAILED | at=${stamp.toISOString()} | ${result.error}`,
+    },
+  }).catch(() => {});
+  return { result: "failed", error: result.error };
+}
+
+/** Automatic post-checkout trigger. Called once after the backend confirms
+ *  order creation. Fire-and-forget by contract: NEVER throws and NEVER
+ *  affects the order response — all failures land on the order as FAILED
+ *  with the reason, and staff can retry from the staff page. */
+export async function autoNotifyAfterOrder(orderId: number): Promise<void> {
+  try {
+    await notifyOrder(orderId, { actorId: null, source: "auto" });
+  } catch (e) {
+    // Absolute last resort: record the failure on the order so staff can retry.
+    try {
+      await prisma.order.update({
+        where: { id: orderId },
+        data: { whatsappStatus: "FAILED", whatsappError: "Auto notification crashed: " + String((e as Error)?.message || e) },
+      });
+    } catch { /* order may not exist — nothing to record */ }
+  }
+}

@@ -606,10 +606,13 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassimStaffLang"
   </div>
 </header>
 <div id="mobile-menu" class="no-print" hidden>
-  <div class="mm-item" id="mm-push">⚠ Push notifications unavailable on this browser</div>
-  <div class="mm-item" id="mm-wa-link" style="display:none"><button class="btn wa-link-btn" id="wa-link-btn-hb" type="button">
-    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12.04 2a9.9 9.9 0 0 0-8.5 14.9L2 22l5.25-1.38A9.9 9.9 0 1 0 12.04 2Zm5.8 14.06c-.25.7-1.45 1.34-2 1.38-.5.05-1.13.24-3.8-.79-3.22-1.27-5.26-4.55-5.42-4.76-.16-.21-1.3-1.72-1.3-3.28 0-1.56.82-2.32 1.11-2.64.29-.32.63-.4.84-.4h.6c.19 0 .45-.07.7.54.26.62.88 2.15.95 2.3.08.16.13.35.02.56-.1.21-.16.34-.31.52l-.47.55c-.16.16-.32.33-.14.65.19.32.82 1.35 1.76 2.19 1.21 1.08 2.23 1.41 2.55 1.57.32.16.5.13.69-.08.18-.21.79-.92 1-1.24.21-.32.42-.26.71-.16.29.11 1.82.86 2.13 1.02.32.16.53.24.61.37.08.14.08.79-.17 1.49Z"/></svg>
-    <span>Link WhatsApp</span></button></div>
+  <!-- Mobile-menu duplicates REMOVED (staff request): the header already
+       shows the Link WhatsApp button at every width (the automation panel is
+       opened from there), and the push-warning item is gone — the push UI
+       was previously removed entirely, so the warning served no purpose.
+       The WhatsApp connection panel, automation, TEST MODE and all related
+       JS wiring are untouched (their null-guards simply skip the removed
+       menu nodes). -->
   <div class="mm-item"><button class="btn" id="signout-hb" type="button" data-i18n="signout">Sign Out</button></div>
 </div>
 <main>
@@ -851,8 +854,20 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassimStaffLang"
      PATCH /api/admin/orders, so the state survives refreshes. */
   /* WhatsApp send-state badge - same visual style as VIEWED / NOT VIEWED. */
   function waBadge(o) {
-    if (o.whatsappSent) return { label: t("SENT", "waSent"), bg: "#dcfce7", fg: "#166534" };
-    return { label: t("NOT SENT", "waNotSent"), bg: "#fef9c3", fg: "#854d0e" };
+    /* WhatsApp notification status (shared by the automatic post-checkout
+       send and the staff manual button): AUTO SENT / MANUALLY SENT / AUTO
+       FAILED (retry available) / SENDING / PENDING. Falls back to the old
+       SENT / NOT SENT pair when the status field is absent (very old rows). */
+    var st = o.whatsappStatus || (o.whatsappSent ? "SENT" : "PENDING");
+    if (o.whatsappSent && st === "SENT") {
+      return o.whatsappAuto
+        ? { label: t("AUTO SENT", "waAutoSent"), bg: "#dcfce7", fg: "#166534" }
+        : { label: t("MANUALLY SENT", "waManualSent"), bg: "#dcfce7", fg: "#166534" };
+    }
+    if (st === "FAILED") return { label: t("AUTO FAILED — RETRY", "waAutoFailed"), bg: "#fee2e2", fg: "#991b1b" };
+    if (st === "SENDING") return { label: t("SENDING…", "waSending"), bg: "#dbeafe", fg: "#1e40af" };
+    if (st === "SENT") return { label: t("SENT", "waSent"), bg: "#dcfce7", fg: "#166534" };
+    return { label: t("PENDING", "waPending"), bg: "#fef9c3", fg: "#854d0e" };
   }
 
   function viewBadge(o) {
@@ -2329,6 +2344,10 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassimStaffLang"
           if (r.j && r.j.code === "ALREADY_SENT") {
             markWaSentLocal(orderId);
             toast("✅ " + t("WhatsApp notification for this order was already sent.", "waAlready"));
+          } else if (r.j && r.j.code === "IN_PROGRESS") {
+            toast("⏳ " + esc(err));
+            var bBusy = document.getElementById("detail-wa-btn");
+            if (bBusy && String(bBusy.getAttribute("data-wa-id")) === String(orderId)) setBtnState(bBusy, t("Retry WhatsApp Send", "waRetry"), false);
           } else {
             toast("❌ <strong>" + t("WhatsApp send failed", "waFailToast") + "</strong><br>" + esc(err));
             var b2 = document.getElementById("detail-wa-btn");
@@ -2343,21 +2362,22 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassimStaffLang"
       })
       .then(function () { sending[orderId] = false; });
   }
-  /* Row/detail sync for a confirmed send (uses the page's markWaSent when
-     available — same IIFE scope trick: it is global via window only if the
-     page exposes it; otherwise replicate the row update). */
+  /* Row/detail sync for a confirmed send. The row's embedded order data is
+     updated FIRST (whatsappStatus/Auto included, so the badge renders the
+     correct MANUALLY SENT variant), then the page's own markWaSent
+     re-renders rows and the open detail view. */
   function markWaSentLocal(orderId) {
-    if (typeof window.__staffMarkWaSent === "function") { window.__staffMarkWaSent(orderId); return; }
     var rows = document.querySelectorAll("tr[data-order]");
     for (var i = 0; i < rows.length; i++) {
       var o;
       try { o = JSON.parse(rows[i].getAttribute("data-order")); } catch (e) { continue; }
       if (!o || String(o.id) !== String(orderId)) continue;
       o.whatsappSent = true;
+      o.whatsappStatus = "SENT";
+      o.whatsappAuto = false; // staff retry = manual send
       rows[i].setAttribute("data-order", JSON.stringify(o));
-      var cell = rows[i].querySelector(".wa-cell");
-      if (cell) cell.innerHTML = '<span class="badge" style="background:#dcfce7;color:#166534">' + esc(t("SENT", "waSent")) + '</span>';
     }
+    if (typeof window.__staffMarkWaSent === "function") window.__staffMarkWaSent(orderId);
   }
   window.__waAutoSend = waAutoSend;
 
@@ -2369,8 +2389,19 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassimStaffLang"
       if (!AUTO) return;
       if (detailBtn.getAttribute("data-wa-sent") === "1") {
         setBtnState(detailBtn, t("WhatsApp Sent ✓", "waSentBtn"), true);
-      } else if (!detailBtn.getAttribute("disabled")) {
-        setBtnState(detailBtn, t("Send WhatsApp Message", "waSendAuto"), false);
+        return;
+      }
+      /* FAILED automatic notification: the manual button IS the retry. */
+      var failed = false;
+      var rows = document.querySelectorAll("tr[data-order]");
+      for (var i = 0; i < rows.length; i++) {
+        try {
+          var o = JSON.parse(rows[i].getAttribute("data-order"));
+          if (String(o.id) === String(detailBtn.getAttribute("data-wa-id"))) { failed = o.whatsappStatus === "FAILED"; break; }
+        } catch (e) {}
+      }
+      if (!detailBtn.getAttribute("disabled")) {
+        setBtnState(detailBtn, failed ? t("Retry WhatsApp Send", "waRetry") : t("Send WhatsApp Message", "waSendAuto"), false);
       }
     }).observe(detailBtn, { attributes: true, attributeFilter: ["data-wa-sent", "data-wa-id"] });
   }

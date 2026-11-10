@@ -510,6 +510,17 @@ model Order {
   // WhatsApp send-state: set when staff sends the WhatsApp message for this
   // order. Separate from the order status state machine.
   whatsappSent  Boolean     @default(false)
+  // WhatsApp notification lifecycle shared by the automatic (post-checkout)
+  // and manual (staff) send paths:
+  //   PENDING  not yet attempted (fresh order, or automation was OFF)
+  //   SENDING  an attempt is in progress (atomic claim; stale attempts expire)
+  //   SENT     Baileys confirmed delivery (whatsappSent also true)
+  //   FAILED   last attempt failed; whatsappError carries the reason and
+  //            staff can retry from the staff page
+  whatsappStatus String     @default("PENDING")
+  whatsappAuto   Boolean    @default(false)
+  whatsappSentAt DateTime?
+  whatsappError  String?
   subtotal      Decimal     @db.Decimal(10, 3)
   shipping      Decimal     @db.Decimal(10, 3) @default(2.5)
   total         Decimal     @db.Decimal(10, 3)

@@ -48,6 +48,10 @@ function serializeOrder(o: {
   staffNotes: string;
   posStatus: string;
   whatsappSent: boolean;
+  whatsappStatus: string;
+  whatsappAuto: boolean;
+  whatsappSentAt: Date | null;
+  whatsappError: string | null;
   status: string;
   subtotal: unknown;
   shipping: unknown;
@@ -78,6 +82,10 @@ function serializeOrder(o: {
     staffNotes: o.staffNotes,
     posStatus: o.posStatus,
     whatsappSent: o.whatsappSent,
+    whatsappStatus: o.whatsappStatus,
+    whatsappAuto: o.whatsappAuto,
+    whatsappSentAt: o.whatsappSentAt,
+    whatsappError: o.whatsappError,
     status: o.status,
     statusLabel: STATUS_LABELS[o.status as OrderStatus] ?? o.status,
     ...calculateBillableTotals(

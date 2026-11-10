@@ -5,6 +5,7 @@ import { getSessionUser } from "@/lib/auth";
 import { calculateBillableTotals } from "@/lib/order-workflow";
 import { generateOrderAccessToken, hashOrderAccessToken } from "@/lib/order-access";
 import { orderShortPath } from "@/lib/order-link";
+import { autoNotifyAfterOrder } from "@/lib/whatsapp-automation";
 import { getShippingRule, computeShipping } from "@/lib/shipping";
 import { rateLimit, getClientIp } from "@/lib/security";
 import { notifyStaffOfNewOrder } from "@/lib/web-push";
@@ -266,6 +267,15 @@ export async function POST(req: NextRequest) {
       total: Number(order.total),
       currency: order.currency,
     });
+
+    /* AUTOMATIC WHATSAPP NOTIFICATION — fired ONLY here, after the backend
+       has confirmed a FRESH order creation (idempotent replays return
+       earlier and never reach this line, so a browser retry/refresh can
+       never duplicate the message). Fire-and-forget by contract: the order
+       response is already final, WhatsApp is an additional notification —
+       an offline/disconnected/failed send is recorded on the order as
+       FAILED for staff retry and never affects the order response. */
+    void autoNotifyAfterOrder(order.id);
 
     return orderResponse(order, accessToken, false);
   } catch (err) {

@@ -1954,12 +1954,10 @@ html.dark #home5-burger-btn { color: #ffffff; }
      clicking it expands the full #order-summary-panel below it (which is
      also above the h1 in DOM order) and pushes the form down. -->
 <button type="button" id="os-mobile-bar" class="os-mbar" aria-expanded="false" aria-controls="order-summary-panel">
-  <span class="os-mbar-pill">
-    <span class="material-symbols-outlined os-mbar-cart" aria-hidden="true">shopping_cart</span>
-    <span class="os-mbar-label" id="os-mbar-label">Show summary</span>
-  </span>
+  <span class="material-symbols-outlined os-mbar-cart" aria-hidden="true">shopping_cart</span>
+  <span class="os-mbar-label" id="os-mbar-label">Show summary</span>
   <span class="os-mbar-total" id="os-mbar-total"></span>
-  <span class="os-mbar-tab" id="os-mbar-tab" aria-hidden="true"><span class="os-mbar-divider-r"></span><span class="material-symbols-outlined">expand_more</span></span>
+  <span class="material-symbols-outlined os-mbar-chevron" aria-hidden="true">expand_more</span>
 </button>
 <!-- Mobile-only phantom: reserves the fixed bar's space in the page flow so
      the heading never jumps when the bar is taken out of flow (desktop:
@@ -2110,16 +2108,10 @@ html.dark .os-mbar-chevron { color: var(--color-on-surface, #e8f1ff); }
   /* Reserve only the EXTRA flow space the fixed bar needs beyond the page's
      own top padding, so the heading sits ~24-30px below the bar (page
      pt-32 = 128px already clears the nav; bar bottom lands ~118px). */
-  .os-mbar-phantom { display: block; height: 52px; } /* extra room for the round arrow button hanging below the bar */
+  .os-mbar-phantom { display: block; height: 24px; }
   /* ---- FIXED COLLAPSED BAR: pinned immediately below the top navigation
      (--os-nav-h is the nav's real bottom edge, measured by the toggle
      script — no extra offset, so no gap). ---- */
-  /* ---- MOBILE-ONLY GLASS HEADER + 3D PILL ============================
-     The bar itself is a slim frosted strip pinned below the nav; the
-     cart/label/chevron group is a silver-grey glass 3D pill on the LEFT
-     and the total stays separately on the RIGHT. Neutral silver/white/
-     grey/charcoal only — no blue anywhere. Desktop (>=768px) is untouched
-     (the bar is display:none there). ---- */
   .os-mbar {
     position: fixed;
     top: calc(var(--os-nav-h, 60px) + env(safe-area-inset-top, 0px));
@@ -2127,179 +2119,14 @@ html.dark .os-mbar-chevron { color: var(--color-on-surface, #e8f1ff); }
     right: 0;
     z-index: 130;
     margin-bottom: 0;
-    border: none;
     border-radius: 0;
-    padding: 8px 12px;
-    padding-top: calc(8px + env(safe-area-inset-top, 0px) * 0);
-    gap: 12px;
-    justify-content: space-between;
-    background: linear-gradient(180deg, rgba(255,255,255,0.82), rgba(244,246,249,0.66));
-    -webkit-backdrop-filter: blur(10px) saturate(120%);
-    backdrop-filter: blur(10px) saturate(120%);
-    box-shadow: 0 1px 0 rgba(255,255,255,0.9) inset, 0 8px 20px rgba(15,23,42,0.08);
+    border-left: none;
+    border-right: none;
+    padding-left: 16px;
+    padding-right: 16px;
+    box-shadow: 0 6px 18px rgba(0, 3, 8, 0.1);
   }
   html.lang-ar .os-mbar { direction: rtl; }
-  /* --- the glass 3D pill (cart + label + chevron) --- */
-  .os-mbar .os-mbar-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 9px 16px;
-    border-radius: 999px;
-    position: relative;
-    isolation: isolate;
-    overflow: hidden;
-    color: #1c2128;
-    background:
-      linear-gradient(180deg,
-        rgba(255,255,255,0.98) 0%,
-        rgba(233,236,241,0.94) 42%,
-        rgba(206,211,219,0.95) 78%,
-        rgba(188,194,203,0.95) 100%);
-    border: 1px solid rgba(148,155,165,0.85);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.95),
-      inset 0 -1px 2px rgba(110,118,130,0.35),
-      inset 1px 0 0 rgba(255,255,255,0.35),
-      inset -1px 0 0 rgba(255,255,255,0.25),
-      0 8px 16px rgba(15,23,42,0.16),
-      0 2px 4px rgba(15,23,42,0.14);
-    transition: box-shadow 0.25s ease, transform 0.25s ease;
-  }
-  /* glossy reflective highlight along the top edge */
-  .os-mbar .os-mbar-pill::before {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    top: 1px; left: 12%; right: 12%; height: 46%;
-    border-radius: 999px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.08) 100%);
-    pointer-events: none;
-  }
-  .os-mbar:active .os-mbar-pill {
-    transform: translateY(1px);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.9),
-      inset 0 -1px 2px rgba(110,118,130,0.35),
-      0 4px 8px rgba(15,23,42,0.16),
-      0 1px 2px rgba(15,23,42,0.12);
-  }
-  /* dark mode: the same glass in charcoal/silver tones (still no blue) */
-  html.dark .os-mbar {
-    background: linear-gradient(180deg, rgba(28,33,41,0.85), rgba(17,22,28,0.72));
-    box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 8px 20px rgba(0,0,0,0.35);
-  }
-  html.dark .os-mbar .os-mbar-pill {
-    color: #e8f1ff;
-    background: linear-gradient(180deg,
-      rgba(84,92,104,0.95) 0%,
-      rgba(52,58,68,0.95) 45%,
-      rgba(28,33,41,0.95) 100%);
-    border-color: rgba(126,134,146,0.7);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.35),
-      inset 0 -1px 2px rgba(0,0,0,0.45),
-      0 8px 16px rgba(0,0,0,0.4),
-      0 2px 4px rgba(0,0,0,0.3);
-  }
-  html.dark .os-mbar .os-mbar-pill::before {
-    background: linear-gradient(180deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.02) 100%);
-  }
-  html.dark .os-mbar-total { color: #e8f1ff; }
-  /* total stays OUTSIDE the pill, dark charcoal, right-aligned */
-  .os-mbar .os-mbar-total {
-    color: #1c2128;
-    font-weight: 800;
-    margin-inline-start: auto;
-    padding-inline-end: 4px;
-  }
-  .os-mbar .os-mbar-cart { font-size: 20px; }
-  /* ---- IDEA 1: small round arrow button + divider lines ==============
-     A 36px frosted circle centred on the SCREEN (50vw) directly below the
-     summary bar; two hairline dividers extend from the screen edges to the
-     circle, vertically aligned with its centre. It lives inside the bar
-     button, so taps bubble to the EXISTING toggle handler — one control,
-     one state. Neutral silver/white/charcoal only. ---- */
-  .os-mbar .os-mbar-tab {
-    position: absolute;
-    /* centred on the SCREEN, not on the bar box */
-    left: 50vw;
-    top: calc(100% + 9px);
-    transform: translateX(-50%);
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    color: #1c2128;
-    cursor: pointer;
-    background: linear-gradient(180deg,
-      rgba(255,255,255,0.98) 0%,
-      rgba(240,243,247,0.96) 55%,
-      rgba(219,224,231,0.96) 100%);
-    border: 1px solid rgba(163,170,180,0.75);
-    box-shadow:
-      inset 0 1px 1px rgba(255,255,255,0.9),
-      inset 0 -2px 3px rgba(120,128,140,0.25),
-      0 6px 14px rgba(15,23,42,0.16),
-      0 2px 4px rgba(15,23,42,0.12);
-  }
-  /* delicate inner highlight (top-left gloss) */
-  .os-mbar .os-mbar-tab::before {
-    content: "";
-    position: absolute;
-    top: 2px; left: 3px; right: 3px; height: 45%;
-    border-radius: 50% 50% 45% 45%;
-    background: linear-gradient(180deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.05) 100%);
-    pointer-events: none;
-  }
-  /* horizontal divider lines, aligned with the circle's centre, small gap */
-  /* left divider = the tab's ::after, extending from the circle to the
-     screen edge; right divider = a real span inside the tab */
-  .os-mbar .os-mbar-tab::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: -46vw;
-    width: calc(50vw - 30px);
-    height: 1px;
-    background: #d8dce2;
-    pointer-events: none;
-  }
-  .os-mbar .os-mbar-divider-r {
-    position: absolute;
-    top: 50%;
-    left: calc(100% + 12px);
-    width: calc(50vw - 30px);
-    height: 1px;
-    background: #d8dce2;
-    pointer-events: none;
-  }
-  .os-mbar .os-mbar-tab .material-symbols-outlined {
-    font-size: 20px;
-    transition: transform 0.25s ease;
-  }
-  .os-mbar.is-open .os-mbar-tab .material-symbols-outlined { transform: rotate(180deg); }
-  /* dark mode: charcoal/silver circle + dim lines */
-  html.dark .os-mbar .os-mbar-tab {
-    color: #e8f1ff;
-    background: linear-gradient(180deg,
-      rgba(84,92,104,0.95) 0%,
-      rgba(28,33,41,0.95) 100%);
-    border-color: rgba(126,134,146,0.7);
-    box-shadow:
-      inset 0 1px 1px rgba(255,255,255,0.25),
-      inset 0 -2px 3px rgba(0,0,0,0.45),
-      0 6px 14px rgba(0,0,0,0.4),
-      0 2px 4px rgba(0,0,0,0.3);
-  }
-  html.dark .os-mbar .os-mbar-tab::before {
-    background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.03) 100%);
-  }
-  html.dark .os-mbar .os-mbar-tab::after,
-  html.dark .os-mbar .os-mbar-divider-r { background: #39414c; }}
-
   /* ---- Edit-cart control (Show Summary panel): no zoom/scale on mobile.
      Tapping fired the desktop :hover transform (scale 1.08), so the button
      enlarged/pulsed instead of navigating cleanly. The click handler goes

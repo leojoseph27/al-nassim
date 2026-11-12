@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" translate="no">
 <head>
+<link rel="preload" href="/assets/fonts/MaterialSymbolsOutlined-var.woff2" as="font" type="font/woff2" crossorigin/>
 <meta name="google" content="notranslate"/>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -2566,9 +2567,19 @@ try { localStorage.setItem("nassim-lang", localStorage.getItem("nassimStaffLang"
        Re-fetch the QR only when there is none yet, the previous fetch
        failed, or it is older than ~20s (Baileys rotates the code) — the
        status poll must not flicker the QR every 3 seconds. */
-    head.innerHTML = '<span style="color:#92400e;font-weight:700">● ' + esc(t("Not connected", "waNotConnected")) + "</span>";
+    var qrShown = !!panelEls.main.querySelector("img[alt='WhatsApp QR']");
+    var qrFresh = qrShown && lastQrFetch && (Date.now() - lastQrFetch < 20000);
+    /* Distinguish the intermediate states in the header instead of showing
+       a flat "Not connected": connecting (service is handshaking with
+       WhatsApp) vs waiting for scan (QR is on screen). */
+    if (CONN.state === "connecting" && !qrShown) {
+      head.innerHTML = '<span style="color:#1d4ed8;font-weight:700">● ' + esc(t("Connecting…", "waConnecting")) + "</span>";
+    } else if (qrShown) {
+      head.innerHTML = '<span style="color:#92400e;font-weight:700">● ' + esc(t("Waiting for scan…", "waWaitingScan")) + "</span>";
+    } else {
+      head.innerHTML = '<span style="color:#92400e;font-weight:700">● ' + esc(t("Not connected", "waNotConnected")) + "</span>";
+    }
     panelEls.instructions.style.display = "";
-    var qrFresh = panelEls.main.querySelector("img[alt='WhatsApp QR']") && lastQrFetch && (Date.now() - lastQrFetch < 20000);
     if (!qrFresh) {
       panelEls.main.innerHTML = '<div style="color:#64748b;padding:24px 0;text-align:center;font-size:13.5px">' + esc(t("Generating QR code…", "waQrLoading")) + "</div>";
       loadQr();

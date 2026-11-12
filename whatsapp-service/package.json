@@ -1,0 +1,29 @@
+{
+  "name": "whatsapp-order-notification-service",
+  "version": "1.0.0",
+  "description": "Minimal standalone WhatsApp service for one-to-one transactional order notifications (built on Baileys).",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsc && node dist/server.js"
+  },
+  "dependencies": {
+    "baileys": "7.0.0-rc14",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "pino": "^9.6.0",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.0",
+    "@types/qrcode": "^1.5.5",
+    "typescript": "^5.5.4"
+  }
+}

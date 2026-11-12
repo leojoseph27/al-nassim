@@ -5,6 +5,7 @@ import { getSessionUser } from "@/lib/auth";
 import { calculateBillableTotals } from "@/lib/order-workflow";
 import { generateOrderAccessToken, hashOrderAccessToken } from "@/lib/order-access";
 import { orderShortPath } from "@/lib/order-link";
+import { resolveCustomerOrigin } from "@/lib/public-origin";
 import { autoNotifyAfterOrder } from "@/lib/whatsapp-automation";
 import { getShippingRule, computeShipping } from "@/lib/shipping";
 import { rateLimit, getClientIp } from "@/lib/security";
@@ -271,11 +272,16 @@ export async function POST(req: NextRequest) {
     /* AUTOMATIC WHATSAPP NOTIFICATION — fired ONLY here, after the backend
        has confirmed a FRESH order creation (idempotent replays return
        earlier and never reach this line, so a browser retry/refresh can
-       never duplicate the message). Fire-and-forget by contract: the order
-       response is already final, WhatsApp is an additional notification —
-       an offline/disconnected/failed send is recorded on the order as
-       FAILED for staff retry and never affects the order response. */
-    void autoNotifyAfterOrder(order.id);
+       never duplicate the message). The link origin comes from the central
+       environment-aware resolver (lib/public-origin.ts): in production the
+       configured APP_BASE_URL domain always wins; in development the
+       trusted origin of THIS customer request (LAN origin, current ngrok
+       tunnel) is used, falling back to APP_BASE_URL.
+       Fire-and-forget by contract: the order response is already final,
+       WhatsApp is an additional notification — an offline/disconnected/
+       failed send is recorded on the order as FAILED for staff retry and
+       never affects the order response. */
+    void autoNotifyAfterOrder(order.id, resolveCustomerOrigin(req.headers) || undefined);
 
     return orderResponse(order, accessToken, false);
   } catch (err) {

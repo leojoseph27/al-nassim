@@ -191,6 +191,12 @@ export async function PATCH(req: NextRequest) {
   // WhatsApp send-state: a pure flag update, recorded independently of the
   // status state machine (no transition validation, no status ledger).
   if (parsed.data.whatsappSent !== undefined && parsed.data.status === undefined) {
+    // Existence check first: prisma.update on a missing id throws P2025,
+    // which surfaced as an unhandled 500 instead of a proper 404.
+    const waExisting = await prisma.order.findUnique({ where: { id: parsed.data.id }, select: { id: true } });
+    if (!waExisting) {
+      return NextResponse.json({ success: false, data: null, error: "Order not found" }, { status: 404 });
+    }
     const updated = await prisma.order.update({
       where: { id: parsed.data.id },
       data: { whatsappSent: parsed.data.whatsappSent },

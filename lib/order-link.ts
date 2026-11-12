@@ -12,23 +12,14 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { SECRET } from "@/lib/auth";
 
+// The central public-origin resolver lives in lib/public-origin.ts
+// (dependency-free, environment-aware). Re-exported here so every existing
+// import site keeps working: order-link remains the single import surface
+// for order-link building blocks.
+export { customerOrderBaseUrl, resolvePublicOrigin } from "@/lib/public-origin";
+
 export function orderShortPath(id: number): string {
   return "/o/" + id + "-" + shortSig(id);
-}
-
-/**
- * Customer-facing base URL for order links sent over WhatsApp.
- *
- * Staff open internal-orders2.html from whatever host they are on (LAN dev
- * box, localhost), so window.location.origin is NOT reachable by the
- * customer. The canonical public origin comes from the APP_BASE_URL server
- * environment variable (production: https://al-nassim.vercel.app). Empty
- * string when unset — callers then fall back to their own origin.
- */
-export function customerOrderBaseUrl(): string {
-  const raw = process.env.APP_BASE_URL || "";
-  const trimmed = raw.trim().replace(/\/+$/, "");
-  return /^https?:\/\//.test(trimmed) ? trimmed : "";
 }
 
 export function verifyOrderShortSlug(slug: string): number | null {

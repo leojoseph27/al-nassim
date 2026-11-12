@@ -181,11 +181,22 @@ export async function serviceStatus(): Promise<WaServiceStatus> {
   }
 }
 
-export async function serviceQr(): Promise<{ ok: boolean; status: number; qrDataUrl?: string; error?: string }> {
-  if (!serviceConfigured()) return { ok: false, status: 503, error: "WhatsApp service is not configured" };
+export async function serviceQr(): Promise<{ ok: boolean; status: number; qrDataUrl?: string; error?: string; state?: string }> {
+  if (!serviceConfigured()) return { ok: false, status: 503, error: "WhatsApp service is not configured", state: "unconfigured" };
   const r = await serviceFetch("/qr", {}, 15000);
   if (r.ok && r.body?.qrDataUrl) return { ok: true, status: 200, qrDataUrl: r.body.qrDataUrl };
-  return { ok: false, status: r.status === 404 ? 409 : 503, error: r.body?.error || "QR unavailable — service unreachable or still connecting" };
+  // Auth rejection from the service means the API keys have drifted apart
+  // (Next's WHATSAPP_API_KEY vs the service's API_KEY) — report THAT, not a
+  // generic "unavailable" 503, so the cause is immediately visible.
+  if (r.status === 401) {
+    return { ok: false, status: 502, error: "WhatsApp service rejected the server API key — WHATSAPP_API_KEY does not match the service's API_KEY", state: "auth_error" };
+  }
+  if (r.status === 404) {
+    // Service up but no QR yet: still connecting/handshaking — a retry will
+    // get one. 409 (retryable) rather than a terminal 503.
+    return { ok: false, status: 409, error: r.body?.error || "QR is being generated — retry in a few seconds", state: "connecting" };
+  }
+  return { ok: false, status: 503, error: r.body?.error || "QR unavailable — service unreachable", state: "unreachable" };
 }
 
 /** Proper logout/unlink of the linked WhatsApp account: the service logs the
@@ -219,35 +230,58 @@ export function normalizeWaPhone(phone: string): string {
  * link the manual wa.me workflow uses (orderShortPath from lib/order-link,
  * recomputed from the id — the order's own existing slug, never a new one).
  *
- * Base URL precedence matches the manual flow: APP_BASE_URL (canonical
- * customer-reachable origin) first, then the fallback origin of the request
- * that triggered the send (same role as the manual flow's
- * window.location.origin fallback).
+ * Base URL precedence: the TRUSTED public origin resolved from the
+ * customer's own checkout request first (resolvePublicOrigin — LAN origin
+ * for LAN browsing, current ngrok HTTPS origin through the tunnel, both
+ * allowlist-validated so a forged Host header can never inject a link),
+ * then APP_BASE_URL (canonical production origin) as the safe fallback.
  */
 export function waOrderUrlFor(orderId: number, fallbackBase?: string): string {
-  const base = customerOrderBaseUrl() || (fallbackBase || "").replace(/\/+$/, "");
+  const base = (fallbackBase || "").replace(/\/+$/, "") || customerOrderBaseUrl();
   return base + orderShortPath(orderId);
 }
 
 /** Bilingual order message, identical wording to the manual wa.me flow in
  *  internal-orders2.html (ENABLE_DELIVERY_SCHEDULE is false there, so no
  *  schedule line is included here either). Arabic literals are the approved
- *  strings from public/assets/js/i18n-data.js. */
+ *  strings from public/assets/js/i18n-data.js.
+ *
+ *  RTL rendering: each Arabic paragraph gets a leading RLM (U+200F) and a
+ *  trailing RLM. The leading mark makes the RLM the first strong RTL
+ *  character of the line so the Arabic reads right-to-left consistently and
+ *  neutrals/punctuation resolve the right way; the trailing mark stabilises
+ *  the sentence-ending "." and the "،" after a Latin customer name, which
+ *  would otherwise attach to the wrong run at the line boundary. RLE/PDF
+ *  was tried and made no visible difference on WhatsApp mobile, so the
+ *  simpler RLM-only scheme is used. NOTE: these marks correct READING
+ *  direction only — they cannot right-ALIGN the bubble (see below). The
+ *  marks are invisible controls and are never applied to the mixed
+ *  "Link | الرابط :" line or the URL, which must stay LTR and clickable.
+ *
+ *  Known WhatsApp renderer limitation: WhatsApp picks ONE base direction
+ *  per message from its first strong character and aligns the whole bubble
+ *  accordingly. This message begins with English ("Dear …"), so the bubble
+ *  is LTR/left-aligned and individual paragraphs cannot be aligned
+ *  separately — ordinary WhatsApp text messages have no per-paragraph
+ *  alignment. */
+const RLM = "\u200F";
+
 export function buildOrderMessage(order: {
   customerName: string;
 }, orderUrl: string): string {
   const name = order.customerName;
+  const rtl = (s: string) => RLM + s + RLM;
   return (
     "Dear " + name + ",\n\n" +
     "Thank you for your order with Al-Nassim Golden Group.\n\n" +
     "YOUR ORDER HAS BEEN RECEIVED.\n\n" +
     "Your order will be delivered within the next 2 days.\n\n" +
     "Please click the link below to view your order.\n\n" +
-    "عزيزي " + name + "،\n\n" +
-    "نشكرك على طلبك من مجموعة النسيم الذهبية.\n\n" +
-    "تم استلام طلبكم.\n\n" +
-    "سيتم توصيل طلبك خلال اليومين القادمين.\n\n" +
-    "يرجى النقر على الرابط أدناه لرؤية طلبك.\n\n" +
+    rtl("عزيزي " + name + "،") + "\n\n" +
+    rtl("نشكرك على طلبك من مجموعة النسيم الذهبية.") + "\n\n" +
+    rtl("تم استلام طلبكم.") + "\n\n" +
+    rtl("سيتم توصيل طلبك خلال اليومين القادمين.") + "\n\n" +
+    rtl("يرجى النقر على الرابط أدناه لرؤية طلبك.") + "\n\n" +
     "Link | الرابط :\n" +
     orderUrl
   );
@@ -407,7 +441,7 @@ async function claimSendSlot(orderId: number): Promise<boolean> {
  */
 export async function notifyOrder(
   orderId: number,
-  opts: { actorId?: number | null; source: "auto" | "manual" }
+  opts: { actorId?: number | null; source: "auto" | "manual"; requestOrigin?: string }
 ): Promise<NotifyOutcome> {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
@@ -443,7 +477,8 @@ export async function notifyOrder(
   const result = await sendOrderMessage(
     orderId,
     { customerName: full.customerName, customerPhone: full.customerPhone },
-    orderIdempotencyKey(orderId)
+    orderIdempotencyKey(orderId),
+    opts.requestOrigin
   );
 
   const stamp = new Date();
@@ -497,12 +532,15 @@ export async function notifyOrder(
 }
 
 /** Automatic post-checkout trigger. Called once after the backend confirms
- *  order creation. Fire-and-forget by contract: NEVER throws and NEVER
- *  affects the order response — all failures land on the order as FAILED
- *  with the reason, and staff can retry from the staff page. */
-export async function autoNotifyAfterOrder(orderId: number): Promise<void> {
+ *  order creation, with the TRUSTED public origin resolved from the
+ *  customer's own checkout request (see resolvePublicOrigin — null when
+ *  untrusted, then APP_BASE_URL is the fallback). Fire-and-forget by
+ *  contract: NEVER throws and NEVER affects the order response — all
+ *  failures land on the order as FAILED with the reason, and staff can
+ *  retry from the staff page. */
+export async function autoNotifyAfterOrder(orderId: number, requestOrigin?: string | null): Promise<void> {
   try {
-    await notifyOrder(orderId, { actorId: null, source: "auto" });
+    await notifyOrder(orderId, { actorId: null, source: "auto", requestOrigin: requestOrigin || undefined });
   } catch (e) {
     // Absolute last resort: record the failure on the order so staff can retry.
     try {

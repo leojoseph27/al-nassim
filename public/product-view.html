@@ -34,6 +34,8 @@
         .accordion-content.expanded { max-height: 1000px; opacity: 1; }
         @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .toast-animate { animation: slideUp 0.3s ease-out forwards; }
+        /* Mobile only: widen the pill so cart icon + text + check icon always stay on one line (mirrors assets/js/toast.js). */
+        @media (max-width: 767px) { #toast-container .toast-animate { min-width: 240px; justify-content: center; } }
 
         /* ---- Product image area: pure white in BOTH themes, ALL viewports ----
            Must stay OUTSIDE the mobile @media block below: it applies to
@@ -1349,7 +1351,7 @@
       }, true);
     })();
     let toastTimeout;
-    function showToast(message) { const container = document.getElementById('toast-container'); while (container.firstChild) container.removeChild(container.firstChild); if (toastTimeout) clearTimeout(toastTimeout); const toast = document.createElement('div'); toast.className = 'toast-animate bg-primary/90 text-on-primary px-6 py-3 rounded-full text-xs font-bold uppercase tracking-widest shadow-2xl backdrop-blur-md border border-white/10 flex items-center gap-2 mb-4 pointer-events-auto'; let iconName = 'check_circle'; if (message.includes('Removed')) iconName = 'heart_minus'; if (message.includes('Link copied')) iconName = 'content_copy'; toast.innerHTML = `<span class="material-symbols-outlined text-sm">${iconName}</span>${message}`; container.appendChild(toast); toastTimeout = setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateY(-20px)'; toast.style.transition = 'all 0.4s ease'; setTimeout(() => { if (toast.parentNode === container) toast.remove(); }, 400); }, 3000); }
+    function showToast(message) { const container = document.getElementById('toast-container'); while (container.firstChild) container.removeChild(container.firstChild); if (toastTimeout) clearTimeout(toastTimeout); const toast = document.createElement('div'); toast.className = 'toast-animate bg-primary/90 text-on-primary px-6 py-3 rounded-full text-xs font-bold uppercase tracking-widest shadow-2xl backdrop-blur-md border border-white/10 flex items-center gap-2 mb-4 pointer-events-auto'; toast.style.borderRadius = '9999px'; /* true pill: compiled .rounded-full is 12px on this site */ let iconName = 'check_circle'; if (message.includes('Removed')) iconName = 'heart_minus'; if (message.includes('Link copied')) iconName = 'content_copy'; const isAr = document.documentElement.classList.contains('lang-ar'); if (isAr) toast.style.direction = 'rtl'; const isCartAdd = message === 'Added to cart'; const text = isCartAdd && isAr ? 'تمت الإضافة إلى السلة' : message; toast.innerHTML = isCartAdd ? `<span class="material-symbols-outlined text-sm">shopping_cart</span><span>${text}</span><span class="material-symbols-outlined text-sm">${iconName}</span>` : `<span class="material-symbols-outlined text-sm">${iconName}</span>${text}`; container.appendChild(toast); toastTimeout = setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateY(-20px)'; toast.style.transition = 'all 0.4s ease'; setTimeout(() => { if (toast.parentNode === container) toast.remove(); }, 400); }, 3000); }
 
     /* ===== Dynamic Product Loading ===== */
 

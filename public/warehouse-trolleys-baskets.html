@@ -1,4 +1,5 @@
 <!DOCTYPE html><html class="" lang="en" translate="no"><head>
+<link rel="preload" href="/assets/fonts/MaterialSymbolsOutlined-var.woff2" as="font" type="font/woff2" crossorigin/>
 <meta name="google" content="notranslate"/>
 <script>
 /* Language bootstrap — runs synchronously BEFORE first paint.
@@ -1211,6 +1212,7 @@
 <link rel="stylesheet" href="assets/css/dark-overrides.css?v=nw1108">
 <link rel="stylesheet" href="assets/css/rtl-overrides.css?v=7"/>
 <script src="assets/js/listing-search-filter.js"></script>
+<script src="assets/js/toast.js?v=4"></script>
 <script src="assets/js/i18n-data.js?v=5" defer></script>
 <script src="assets/js/product-name.js?v=1"></script>
 <script src="assets/js/i18n.js?v=2" defer></script>
@@ -2342,32 +2344,15 @@ html.dark #home5-burger-btn { color: #ffffff; }
     try { localStorage.setItem(WISH_KEY, JSON.stringify({ state: { items: items } })); } catch (e) {}
   }
 
-  /* ---- toast (self-contained, mirrors product-view.html) ---- */
-  var toastTimer = null;
+  /* ---- toast: shared implementation (assets/js/toast.js) — same design,
+     animation, position and duration as the product-view.html reference
+     toast (top-center pill, slideUp 0.3s, 3s duration). The legacy bottom
+     sc-toast is retired. The custom icon argument is ignored on purpose:
+     the reference derives the icon from the message. ---- */
   function showToast(msg, icon) {
-    var t = document.getElementById("sc-toast");
-    if (!t) {
-      t = document.createElement("div");
-      t.id = "sc-toast";
-      t.style.cssText =
-        "position:fixed;left:50%;bottom:2rem;transform:translateX(-50%) translateY(10px);" +
-        "background:#000308;color:#fff;z-index:200;font-size:0.75rem;font-weight:700;" +
-        "padding:0.6rem 1rem;border-radius:9999px;display:inline-flex;align-items:center;gap:0.4rem;" +
-        "box-shadow:0 8px 24px rgba(0,0,0,0.25);opacity:0;pointer-events:none;" +
-        "transition:opacity .25s ease, transform .25s ease;max-width:90vw;";
-      document.body.appendChild(t);
-    }
-    t.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">' + (icon || "check_circle") + "</span>" + msg;
-    t.classList.add("show");
-    t.style.opacity = "1";
-    t.style.transform = "translateX(-50%) translateY(0)";
-    if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () {
-      t.style.opacity = "0";
-      t.style.transform = "translateX(-50%) translateY(10px)";
-    }, 1800);
+    if (window.NassimShowToast) { window.NassimShowToast(msg); }
   }
-
+  /* ---- cart
   /* ---- cart (byte-identical logic to product view addToCartBySlug) ---- */
   function addToCartBySlug(slug) {
     var product = window.NassimGetProduct ? window.NassimGetProduct(slug) : null;

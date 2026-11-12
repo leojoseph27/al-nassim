@@ -71,6 +71,7 @@
 <link rel="preload" href="/assets/fonts/MaterialSymbolsOutlined-var.woff2" as="font" type="font/woff2" crossorigin/>
 <link rel="preload" href="/assets/fonts/Inter-400-UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2" as="font" type="font/woff2" crossorigin/>
 <link rel="preload" href="/assets/fonts/Manrope-800-xn7gYHE41ni1AdIRggexSg.woff2" as="font" type="font/woff2" crossorigin/>
+<script src="/assets/js/font-gate.js"></script>
 <link rel="stylesheet" href="/assets/css/fonts-local.css?v=20261013"/>
 <link rel="stylesheet" href="assets/css/rtl-overrides.css?v=7"/>
 <script src="assets/js/i18n-data.js?v=10" defer></script>
@@ -248,6 +249,11 @@ html.dark body { background: var(--color-background, #0a0f14); }
 html.light main.checkout-page h1 { color: #0d1b2a; }
 html.dark main.checkout-page h1 { color: var(--color-on-surface, #e8f1ff); }
 main.checkout-page h1 { letter-spacing: -0.02em; }
+/* Mobile only: 15% reduction from text-4xl (36px -> 30.6px). Desktop
+   (>=768px landscape) keeps the original text-4xl size. */
+@media (max-width: 767px), (orientation: portrait) {
+  main.checkout-page h1 { font-size: 1.9125rem; }
+}
 html.light #checkout-form h2 { color: #0d1b2a; }
 html.dark #checkout-form h2 { color: var(--color-on-surface, #e8f1ff); }
 #checkout-form h2 { letter-spacing: -0.01em; }
@@ -1953,12 +1959,18 @@ html.dark #home5-burger-btn { color: #ffffff; }
 <!-- MOBILE-ONLY compact summary bar (hidden >=768px). Sits above the h1;
      clicking it expands the full #order-summary-panel below it (which is
      also above the h1 in DOM order) and pushes the form down. -->
+<div class="os-mbar-head">
 <button type="button" id="os-mobile-bar" class="os-mbar" aria-expanded="false" aria-controls="order-summary-panel">
   <span class="material-symbols-outlined os-mbar-cart" aria-hidden="true">shopping_cart</span>
-  <span class="os-mbar-label" id="os-mbar-label">Show summary</span>
+  <span class="os-mbar-mid">
+    <span class="os-mbar-label" id="os-mbar-label">Show summary</span>
+    <span class="os-mbar-arrowwrap" aria-hidden="true">
+      <span class="material-symbols-outlined os-mbar-arrow-chev">expand_more</span>
+    </span>
+  </span>
   <span class="os-mbar-total" id="os-mbar-total"></span>
-  <span class="material-symbols-outlined os-mbar-chevron" aria-hidden="true">expand_more</span>
 </button>
+</div>
 <!-- Mobile-only phantom: reserves the fixed bar's space in the page flow so
      the heading never jumps when the bar is taken out of flow (desktop:
      hidden, bar is static in the grid anyway). -->
@@ -2091,6 +2103,11 @@ html.dark .os-mbar {
 .os-mbar-cart { font-size: 24px; color: #111418; flex-shrink: 0; }
 html.dark .os-mbar-cart { color: var(--color-on-surface, #e8f1ff); }
 .os-mbar-label { font-size: 0.9rem; font-weight: 700; flex: 1 1 auto; min-width: 0; }
+/* Mobile-only fixed head: wraps the pill bar + its arrow container. Hidden
+   on desktop (bar and arrow are display:none there, so the wrapper is an
+   empty, zero-size div in the static grid — desktop layout untouched). */
+.os-mbar-head { display: block; }
+.os-mbar-arrowwrap { display: none; }
 .os-mbar-total { flex-shrink: 0; }
 .os-mbar-total .os-mbar-total-amount {
   display: inline-block;
@@ -2100,33 +2117,115 @@ html.dark .os-mbar-cart { color: var(--color-on-surface, #e8f1ff); }
   direction: ltr;
   unicode-bidi: isolate;
 }
-.os-mbar-chevron { font-size: 22px; color: #111418; flex-shrink: 0; transition: transform 0.2s ease; }
-html.dark .os-mbar-chevron { color: var(--color-on-surface, #e8f1ff); }
-.os-mbar.is-open .os-mbar-chevron { transform: rotate(180deg); }
 @media (max-width: 767px) {
   .os-mbar { display: flex; }
-  /* Reserve only the EXTRA flow space the fixed bar needs beyond the page's
-     own top padding, so the heading sits ~24-30px below the bar (page
-     pt-32 = 128px already clears the nav; bar bottom lands ~118px). */
-  .os-mbar-phantom { display: block; height: 24px; }
-  /* ---- FIXED COLLAPSED BAR: pinned immediately below the top navigation
-     (--os-nav-h is the nav's real bottom edge, measured by the toggle
-     script — no extra offset, so no gap). ---- */
-  .os-mbar {
+  /* Reserve only the EXTRA flow space the fixed head needs beyond the page's
+     own top padding, so the heading sits ~24-30px below it (page pt-32 =
+     128px already clears the nav). Includes the arrow container height. */
+  .os-mbar-phantom { display: block; height: 27px; }
+  /* ---- SHOW SUMMARY BUTTON: ONE component — a single white rounded
+     container with a subtle 3D raised look (pure white surface, thin dark
+     outline, soft dark drop shadow, top-edge highlight). Pinned 12px below
+     the top navigation (--os-nav-h is the nav's real bottom edge, measured
+     by the toggle script). The whole button toggles the summary; the
+     chevron lives INSIDE the button, centred under the label. ---- */
+  .os-mbar-head {
     position: fixed;
-    top: calc(var(--os-nav-h, 60px) + env(safe-area-inset-top, 0px));
+    top: calc(var(--os-nav-h, 60px) + env(safe-area-inset-top, 0px) + 12px);
     left: 0;
     right: 0;
     z-index: 130;
-    margin-bottom: 0;
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
-    padding-left: 16px;
-    padding-right: 16px;
-    box-shadow: 0 6px 18px rgba(0, 3, 8, 0.1);
+    padding: 0 16px;
+    pointer-events: none;
+  }
+  .os-mbar-head > * { pointer-events: auto; }
+  /* No double-tap zoom on the Show Summary button: same mechanism as
+     cart.html's quantity buttons — touch-action: manipulation allows
+     panning and pinch-to-zoom but disables the double-tap-to-zoom
+     gesture, so rapid repeated taps toggle the summary instead of
+     zooming the page. Scoped to this component only. */
+  .os-mbar-head,
+  .os-mbar { touch-action: manipulation; }
+  .os-mbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    pointer-events: auto;
+    border-radius: 22px;
+    border: 1px solid #333333;
+    background: #ffffff;
+    padding: 5px 18px 21px;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      0 6px 14px rgba(9, 14, 20, 0.28);
+  }
+  html.dark .os-mbar {
+    background: linear-gradient(180deg, var(--color-surface-container, #232a34) 0%, var(--color-surface-container-low, #1a2029) 100%);
+    border-color: #9aa1a9;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 6px 14px rgba(0, 0, 0, 0.4);
   }
   html.lang-ar .os-mbar { direction: rtl; }
+  /* Preserve the agreed larger typography inside the pill (mobile only). */
+  .os-mbar .os-mbar-cart { font-size: 26px; }
+  .os-mbar .os-mbar-label { font-size: 1.02rem; letter-spacing: 0.01em; line-height: 1.25; }
+  .os-mbar .os-mbar-total-amount { font-size: 1.1rem; }
+  /* Label column: sits IMMEDIATELY right of the cart icon, sized to the
+     label. The chevron is absolutely positioned under the label's centre,
+     so it never pushes the label off the price's horizontal line; the
+     button's extra bottom padding reserves room for it. The total is
+     pushed to the far right by its auto margin and stays vertically
+     centred — label and price share one line, exactly like the reference. */
+  .os-mbar .os-mbar-mid {
+    position: relative;
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  .os-mbar .os-mbar-total { margin-inline-start: auto; }
+  /* Arabic mobile: the shared i18n RTL engine re-stamps the bar's currency
+     span with dir="rtl"/.nassim-rtl and its parent with .nassim-rtl-dir,
+     which flips the visual order so د.ك lands on the RIGHT of the amount.
+     Restoring LTR base direction on just this element keeps د.ك on the
+     LEFT. Scoped: Arabic only, mobile only, bar total only. */
+  html.lang-ar .os-mbar .os-mbar-total-amount,
+  html.lang-ar .os-mbar .os-mbar-total-amount .nassim-rtl {
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+  .os-mbar .os-mbar-arrowwrap {
+    position: absolute;
+    /* Centre-anchored: the chevron grew ~20%, so the wrap is re-centred on
+       the previous chevron's vertical centre to keep its position stable. */
+    top: calc(100% - 5px);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+  }
+  .os-mbar .os-mbar-arrow-chev {
+    font-size: 34px;
+    color: #23272d;
+    line-height: 1;
+    transition: transform 0.2s ease;
+  }
+  html.dark .os-mbar .os-mbar-arrow-chev { color: var(--color-on-surface, #e8f1ff); }
+  /* Expanded: the chevron flips to point upwards (bar keeps .is-open from
+     the existing toggle state — no separate state is introduced). */
+  .os-mbar.is-open .os-mbar-arrow-chev { transform: rotate(180deg); }
+  /* ---- Download App popover stacking ---------------------------------
+     The popover lives INSIDE the fixed nav's stacking context (nav z-50),
+     so its own z-index can never lift it above this component's root-level
+     z-130 head. While the popover is open (class toggled by the watcher
+     below), the head — and the expanded overlay panel — drop BELOW the
+     nav's context so the App Store / Google Play panel paints above them.
+     Only the z-index changes: dimensions, styling and click behaviour of
+     both components are untouched. ---- */
+  .os-mbar-head.os-under-download-pop { z-index: 40 !important; }
+  #order-summary-panel.os-open.os-under-download-pop { z-index: 35 !important; }
   /* ---- Edit-cart control (Show Summary panel): no zoom/scale on mobile.
      Tapping fired the desktop :hover transform (scale 1.08), so the button
      enlarged/pulsed instead of navigating cleanly. The click handler goes
@@ -2871,8 +2970,12 @@ html.lang-ar .os-edit-btn { text-align: right; }
       bar.style.display = "";
       var barTotal = document.getElementById("os-mbar-total");
       /* Plain single-line currency format on the bar: KD 10.000 (no raised
-         KD/fils structure — that stays in the expanded panel's Total). */
-      if (barTotal) barTotal.innerHTML = '<span class="os-mbar-total-amount" dir="ltr">' + (isAr() ? "د.ك" : "KD") + ' ' + fmt3(total) + '</span>';
+         KD/fils structure — that stays in the expanded panel's Total).
+         Arabic: the LRM (U+200E) after د.ك stops bidi rule W2 from
+         classifying the digits as Arabic Numbers, which would reorder them
+         into the RTL run and visually flip the currency to the right of
+         the amount. The mark is invisible and touches nothing else. */
+      if (barTotal) barTotal.innerHTML = '<span class="os-mbar-total-amount" dir="ltr">' + (isAr() ? "د.ك\u200E" : "KD") + ' ' + fmt3(total) + '</span>';
       syncBarLabel();
     }
 
@@ -2931,8 +3034,11 @@ html.lang-ar .os-edit-btn { text-align: right; }
       var nav = document.querySelector("nav.glass-nav");
       var navBottom = nav ? Math.max(0, nav.getBoundingClientRect().bottom) : 60;
       var barH = bar ? bar.getBoundingClientRect().height : 64;
+      /* The chevron lives inside the button now, so the button's own height
+         covers the whole component; the +24 covers the 12px nav gap and the
+         head's placement so the overlay's first row clears the button. */
       document.documentElement.style.setProperty("--os-nav-h", navBottom + "px");
-      document.documentElement.style.setProperty("--os-bar-h", (barH + 8) + "px");
+      document.documentElement.style.setProperty("--os-bar-h", (barH + 24) + "px");
     }
     function setOverlay(open) {
       var panel = document.getElementById("order-summary-panel");
@@ -2955,6 +3061,27 @@ html.lang-ar .os-edit-btn { text-align: right; }
       bar.addEventListener("click", function () {
         setOverlay(!panelOpen());
       });
+      /* The whole button is the single clickable component — the chevron
+         inside it bubbles to this same handler, so no separate arrow
+         binding exists. */
+      /* Download App popover stacking (mobile): the popover is rendered
+         inside the nav's own stacking context, so it can never paint above
+         this component's root-level z-130 head by its own z-index. Watch
+         the popover's visibility classes and drop the summary head — and
+         the expanded overlay panel — below the nav's context only WHILE the
+         popover is open. No dimensions, styling or handlers change. */
+      var pop = document.getElementById("download-popup");
+      if (pop && "MutationObserver" in window) {
+        var updatePopStack = function () {
+          var open = pop.classList.contains("visible") && pop.classList.contains("opacity-100");
+          var head = document.querySelector(".os-mbar-head");
+          if (head) head.classList.toggle("os-under-download-pop", open);
+          var panel = document.getElementById("order-summary-panel");
+          if (panel) panel.classList.toggle("os-under-download-pop", open);
+        };
+        new MutationObserver(updatePopStack).observe(pop, { attributes: true, attributeFilter: ["class"] });
+        updatePopStack();
+      }
     /* Keep the bar/overlay pinned to the real nav edge: measure on load and
        on every viewport change (address bar, orientation), not only while
        the overlay is open — the CSS fallback (60px) would otherwise let the

@@ -16,14 +16,24 @@ export async function GET() {
   }
   const status = await serviceStatus();
   if (!status.serviceUp) {
-    return NextResponse.json({ success: false, data: null, error: "WhatsApp service is not running. Ask the administrator to start it." }, { status: 503 });
+    return NextResponse.json({
+      success: false, data: { state: "service_offline", connected: false, phone: null },
+      error: "WhatsApp service is not running. Ask the administrator to start it.",
+    }, { status: 503 });
   }
   if (status.connected) {
-    return NextResponse.json({ success: true, data: { connected: true, phone: status.phone }, error: null });
+    return NextResponse.json({ success: true, data: { connected: true, phone: status.phone, state: status.state }, error: null });
   }
   const qr = await serviceQr();
   if (!qr.ok) {
-    return NextResponse.json({ success: false, data: null, error: qr.error || "QR not available yet" }, { status: qr.status });
+    // Always include the live connection state so the staff panel can show
+    // QR generating / waiting-for-scan / connecting / error distinctly
+    // instead of an undifferentiated failure.
+    return NextResponse.json({
+      success: false,
+      data: { connected: false, phone: status.phone, state: qr.state || status.state },
+      error: qr.error || "QR not available yet",
+    }, { status: qr.status });
   }
-  return NextResponse.json({ success: true, data: { connected: false, phone: status.phone, qrDataUrl: qr.qrDataUrl }, error: null });
+  return NextResponse.json({ success: true, data: { connected: false, phone: status.phone, state: status.state, qrDataUrl: qr.qrDataUrl }, error: null });
 }

@@ -109,3 +109,8 @@ scripts/product-image-migration.log
 # 3 UTF-8 bytes per char — hence the byte-count wildcards)
 *.html???
 *.html????
+
+# WhatsApp Baileys service (secrets + persistent session — never commit)
+whatsapp-service/.env
+whatsapp-service/auth/
+whatsapp-service/node_modules/

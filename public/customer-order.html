@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" translate="no">
 <head>
+<link rel="preload" href="/assets/fonts/MaterialSymbolsOutlined-var.woff2" as="font" type="font/woff2" crossorigin/>
 <meta name="google" content="notranslate"/>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -9,6 +10,7 @@
      asset every storefront page loads. This page previously loaded no font
      stylesheet at all, so .material-symbols-outlined icons rendered as raw
      ligature text and body typography fell back to system fonts. -->
+<script src="/assets/js/font-gate.js"></script>
 <link rel="stylesheet" href="/assets/css/fonts-local.css?v=20261013"/>
 <link rel="stylesheet" href="/assets/css/tailwind.css?v=20261013c">
 <link rel="stylesheet" href="assets/css/nav-popover-mobile.css?v=10"/>
@@ -307,14 +309,14 @@
     #os-wrap .os-delivery .os-da-icon .material-symbols-outlined { font-size: 22px; }
     #os-wrap .os-delivery .os-da-body { padding: 4px 16px 12px; }
     #os-wrap .os-delivery .os-da-toprow { flex-direction: column; align-items: stretch; gap: 7px; padding: 8px 0 10px; }
-    #os-wrap .os-delivery .os-da-group { grid-template-columns: 64px 12px 1fr; }
+    #os-wrap .os-delivery .os-da-group { grid-template-columns: 88px 12px 1fr; column-gap: 7px; }
     #os-wrap .os-delivery .os-da-group + .os-da-group { margin-inline-start: 0; padding-inline-start: 0; border-inline-start: 0; border-top: 1px solid #EEF1F7; padding-top: 8px; }
     #os-wrap .os-delivery .os-da-label, #os-wrap .os-delivery .os-da-colon { font-size: 13.5px; }
     #os-wrap .os-delivery .os-da-value { font-size: 13.5px; white-space: normal; overflow: visible; }
     #os-wrap .os-delivery .os-da-box { padding: 6px 14px; margin-top: 8px; min-height: 0; }
     #os-wrap .os-delivery .os-da-cols { flex-direction: column; }
     #os-wrap .os-delivery .os-da-vdiv { width: auto; height: 1px; margin: 5px 0; }
-    #os-wrap .os-delivery .os-da-item { grid-template-columns: 74px 12px 1fr; padding: 6px 0; }
+    #os-wrap .os-delivery .os-da-item { grid-template-columns: 88px 12px 1fr; column-gap: 7px; padding: 6px 0; }
     #os-wrap .os-card-blue .os-line { font-size: 14px; padding: 5px 0; }
   }
   @media print {
